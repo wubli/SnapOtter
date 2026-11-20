@@ -1292,7 +1292,7 @@ export const id: TranslationKeys = {
     },
     "crop-pdf": {
       name: "Potong PDF",
-      description: "Potong semua halaman dengan margin seragam",
+      description: "Potong halaman dengan margin atau ke suatu area",
     },
     "resize-pdf-pages": {
       name: "Ubah Ukuran Halaman PDF",
@@ -4122,6 +4122,20 @@ export const id: TranslationKeys = {
     },
     "crop-pdf": {
       margin: "Margin (poin)",
+      mode: "Potong berdasarkan",
+      modeUniform: "Margin sama di setiap tepi",
+      modeSides: "Margin per tepi",
+      modeRegion: "Area",
+      top: "Atas (poin)",
+      right: "Kanan (poin)",
+      bottom: "Bawah (poin)",
+      left: "Kiri (poin)",
+      x: "Dari kiri (poin)",
+      y: "Dari atas (poin)",
+      width: "Lebar (poin)",
+      height: "Tinggi (poin)",
+      regionHint:
+        "Diukur dari sudut kiri atas setiap halaman. Label 4x6 inci berukuran 288 x 432 poin.",
       submit: "Pangkas",
       submitBatch: "Pangkas ({count} file)",
       progressLabel: "Memangkas",
