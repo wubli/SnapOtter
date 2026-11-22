@@ -10040,7 +10040,7 @@ paths:
                     विकल्पों वाली JSON स्ट्रिंग:
                     - `startS` (number >= 0, default 0) - सेकंड में शुरुआती समय
                     - `endS` (number, required) - सेकंड में अंतिम समय (startS के बाद होना चाहिए)
-                    - `precise` (boolean, default false) - keyframe seek के बजाय फ़्रेम-सटीक कटिंग के लिए फिर से एन्कोड करें
+                    - `precise` (boolean, default false) - अगले keyframe से कॉपी करने के बजाय पूरी रेंज को फिर से एन्कोड करें, ताकि आरंभ और समाप्ति दोनों फ्रेम सटीक हों
             example:
               file: photo.png
               settings: '{}'
@@ -32283,9 +32283,9 @@ x-i18n:
       provenance: machine
       outputHash: 395e10e409db
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/requestBody/content/multipart~1form-data/schema/properties/settings/description:
-      sourceHash: 4e849a9855fc
+      sourceHash: 6a7312703b1d
       provenance: machine
-      outputHash: 9ae43d2a3355
+      outputHash: 7d3a1ecc72bd
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/responses/200/description:
       sourceHash: fb43034e42ed
       provenance: machine

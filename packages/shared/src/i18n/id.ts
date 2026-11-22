@@ -3445,7 +3445,7 @@ export const id: TranslationKeys = {
       nothingToCut: "Isi waktu potong untuk setidaknya satu ujung",
       start: "Mulai",
       end: "Akhir",
-      precise: "Akurat per frame (encoding ulang)",
+      precise: "Frame akhir yang tepat (encoding ulang seluruh klip)",
       submit: "Potong",
       submitBatch: "Potong ({count} file)",
       progressLabel: "Memotong",

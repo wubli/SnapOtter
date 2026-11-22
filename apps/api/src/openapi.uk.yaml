@@ -10042,7 +10042,7 @@ paths:
                     JSON-рядок з параметрами:
                     - `startS` (число >= 0, за замовчуванням 0) - Час початку в секундах
                     - `endS` (число, обов'язково) - Час завершення в секундах (має бути пізніше за startS)
-                    - `precise` (логічне значення, за замовчуванням false) - Перекодувати для точного за кадрами обрізання замість пошуку за ключовими кадрами
+                    - `precise` (логічне значення, за замовчуванням false) - Перекодувати весь діапазон, щоб початковий і кінцевий кадри були точними, замість копіювання від наступного ключового кадру
             example:
               file: photo.png
               settings: '{}'
@@ -32288,9 +32288,9 @@ x-i18n:
       provenance: machine
       outputHash: 8e3fe56b5d82
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/requestBody/content/multipart~1form-data/schema/properties/settings/description:
-      sourceHash: 4e849a9855fc
+      sourceHash: 6a7312703b1d
       provenance: machine
-      outputHash: 6582cabd8a2b
+      outputHash: 2029b96f50c9
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/responses/200/description:
       sourceHash: fb43034e42ed
       provenance: machine

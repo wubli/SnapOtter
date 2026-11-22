@@ -10042,7 +10042,7 @@ paths:
                     Ciąg JSON z opcjami:
                     - `startS` (liczba >= 0, domyślnie 0) - Czas początkowy w sekundach
                     - `endS` (liczba, wymagana) - Czas końcowy w sekundach (musi być po startS)
-                    - `precise` (wartość logiczna, domyślnie false) - Ponowne kodowanie dla cięć dokładnych co do klatki zamiast przeskoku do klatki kluczowej
+                    - `precise` (wartość logiczna, domyślnie false) - Ponowne kodowanie całego zakresu, aby początek i koniec były dokładnie co do klatki, zamiast kopiowania od następnej klatki kluczowej
             example:
               file: photo.png
               settings: '{}'
@@ -32288,9 +32288,9 @@ x-i18n:
       provenance: machine
       outputHash: ccc32aebd357
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/requestBody/content/multipart~1form-data/schema/properties/settings/description:
-      sourceHash: 4e849a9855fc
+      sourceHash: 6a7312703b1d
       provenance: machine
-      outputHash: bd648bf43e10
+      outputHash: ffb1c2a7530a
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/responses/200/description:
       sourceHash: fb43034e42ed
       provenance: machine

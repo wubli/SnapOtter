@@ -3462,7 +3462,7 @@ export const nl: TranslationKeys = {
       nothingToCut: "Stel voor minstens één uiteinde een tijd in",
       start: "Start",
       end: "Einde",
-      precise: "Framenauwkeurig (herencodeert)",
+      precise: "Exact eindframe (herencodeert de hele clip)",
       submit: "Bijknippen",
       submitBatch: "Bijknippen ({count} bestanden)",
       progressLabel: "Bijknippen",

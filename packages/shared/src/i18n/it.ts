@@ -3453,7 +3453,7 @@ export const it: TranslationKeys = {
       nothingToCut: "Imposta un tempo da tagliare per almeno un'estremità",
       start: "Inizio",
       end: "Fine",
-      precise: "Precisione al fotogramma (ricodifica)",
+      precise: "Fotogramma finale esatto (ricodifica l'intera clip)",
       submit: "Taglia",
       submitBatch: "Taglia ({count} file)",
       progressLabel: "Taglio in corso",

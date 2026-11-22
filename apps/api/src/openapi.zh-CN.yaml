@@ -9995,7 +9995,7 @@ paths:
                     JSON 字符串，包含以下选项：
                     - `startS`（数字 ≥ 0，默认 0）- 开始时间（秒）
                     - `endS`（数字，必填）- 结束时间（秒，必须晚于 startS）
-                    - `precise`（布尔值，默认 false）- 重新编码以实现逐帧精确剪切，而不是关键帧定位
+                    - `precise`（布尔值，默认 false）- 重新编码整个范围，使起止帧都精确，而不是从下一个关键帧开始复制
             example:
               file: photo.png
               settings: '{}'
@@ -32211,9 +32211,9 @@ x-i18n:
       provenance: machine
       outputHash: f7a280773c4b
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/requestBody/content/multipart~1form-data/schema/properties/settings/description:
-      sourceHash: 4e849a9855fc
+      sourceHash: 6a7312703b1d
       provenance: machine
-      outputHash: 39dddf7efb71
+      outputHash: 5d2f022bf028
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/responses/200/description:
       sourceHash: fb43034e42ed
       provenance: machine

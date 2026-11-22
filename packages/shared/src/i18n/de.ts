@@ -3471,7 +3471,7 @@ export const de: TranslationKeys = {
       nothingToCut: "Gib für mindestens ein Ende eine Zeit an",
       start: "Start",
       end: "Ende",
-      precise: "Bildgenau (neu kodiert)",
+      precise: "Exaktes Endbild (kodiert den ganzen Clip neu)",
       submit: "Kürzen",
       submitBatch: "Kürzen ({count} Dateien)",
       progressLabel: "Wird gekürzt",

@@ -10041,7 +10041,7 @@ paths:
                     JSON-sträng med alternativ:
                     - `startS` (number >= 0, standard 0) - Starttid i sekunder
                     - `endS` (number, krävs) - Sluttid i sekunder (måste vara efter startS)
-                    - `precise` (boolean, standard false) - Koda om för bildrutesäkra klipp i stället för nyckelbildssökning
+                    - `precise` (boolean, standard false) - Koda om hela intervallet så att både start och slut blir bildruteexakta, i stället för att kopiera från nästa nyckelbild
             example:
               file: photo.png
               settings: '{}'
@@ -32283,9 +32283,9 @@ x-i18n:
       provenance: machine
       outputHash: 7030d6dd00b8
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/requestBody/content/multipart~1form-data/schema/properties/settings/description:
-      sourceHash: 4e849a9855fc
+      sourceHash: 6a7312703b1d
       provenance: machine
-      outputHash: 9a1b16bca9ab
+      outputHash: 90b551124f09
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/responses/200/description:
       sourceHash: fb43034e42ed
       provenance: machine

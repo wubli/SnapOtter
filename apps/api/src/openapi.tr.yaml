@@ -10042,7 +10042,7 @@ paths:
                     Seçenekleri içeren JSON dizgesi:
                     - `startS` (sayı >= 0, varsayılan 0) - Saniye cinsinden başlangıç zamanı
                     - `endS` (sayı, zorunlu) - Saniye cinsinden bitiş zamanı (startS değerinden sonra olmalı)
-                    - `precise` (boolean, varsayılan false) - Anahtar kare aramak yerine kare hassasiyetinde kesim için yeniden kodla
+                    - `precise` (boolean, varsayılan false) - Bir sonraki anahtar kareden kopyalamak yerine, başlangıç ve bitiş karelerinin tam olması için tüm aralığı yeniden kodla
             example:
               file: photo.png
               settings: '{}'
@@ -32287,9 +32287,9 @@ x-i18n:
       provenance: machine
       outputHash: 068e57a87830
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/requestBody/content/multipart~1form-data/schema/properties/settings/description:
-      sourceHash: 4e849a9855fc
+      sourceHash: 6a7312703b1d
       provenance: machine
-      outputHash: be0c1070f633
+      outputHash: 4c9a5ab89696
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/responses/200/description:
       sourceHash: fb43034e42ed
       provenance: machine

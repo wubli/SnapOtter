@@ -3452,7 +3452,7 @@ export const uk: TranslationKeys = {
       nothingToCut: "Вкажіть час обрізання хоча б для одного краю",
       start: "Початок",
       end: "Кінець",
-      precise: "Покадрова точність (перекодування)",
+      precise: "Точний кінцевий кадр (перекодовує весь кліп)",
       submit: "Обрізати",
       submitBatch: "Обрізати ({count} файлів)",
       progressLabel: "Обрізання",

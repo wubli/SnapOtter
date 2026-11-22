@@ -10018,7 +10018,7 @@ paths:
                     Chaîne JSON avec les options :
                     - `startS` (nombre >= 0, par défaut 0) - Temps de début en secondes
                     - `endS` (nombre, obligatoire) - Temps de fin en secondes (doit être postérieur à startS)
-                    - `precise` (booléen, par défaut false) - Réencoder pour des coupes précises à l'image près au lieu d'une recherche sur image clé
+                    - `precise` (booléen, par défaut false) - Réencode toute la plage pour obtenir des images de début et de fin exactes, au lieu de copier à partir de l'image clé suivante
             example:
               file: photo.png
               settings: '{}'
@@ -32262,9 +32262,9 @@ x-i18n:
       provenance: machine
       outputHash: 33138663ea0f
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/requestBody/content/multipart~1form-data/schema/properties/settings/description:
-      sourceHash: 4e849a9855fc
+      sourceHash: 6a7312703b1d
       provenance: machine
-      outputHash: 9b38adf616bd
+      outputHash: 9a55c712c4e6
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/responses/200/description:
       sourceHash: fb43034e42ed
       provenance: machine

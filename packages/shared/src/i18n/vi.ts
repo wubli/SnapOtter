@@ -3440,7 +3440,7 @@ export const vi: TranslationKeys = {
       nothingToCut: "Đặt thời gian cắt cho ít nhất một đầu",
       start: "Bắt đầu",
       end: "Kết thúc",
-      precise: "Chính xác từng khung hình (mã hóa lại)",
+      precise: "Khung hình kết thúc chính xác (mã hóa lại toàn bộ clip)",
       submit: "Cắt",
       submitBatch: "Cắt ({count} tệp)",
       progressLabel: "Đang cắt",

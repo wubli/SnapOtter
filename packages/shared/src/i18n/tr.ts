@@ -3450,7 +3450,7 @@ export const tr: TranslationKeys = {
       nothingToCut: "En az bir uç için kırpılacak süre girin",
       start: "Başlangıç",
       end: "Bitiş",
-      precise: "Kare hassasiyetinde (yeniden kodlar)",
+      precise: "Tam bitiş karesi (tüm klibi yeniden kodlar)",
       submit: "Kırp",
       submitBatch: "Kırp ({count} dosya)",
       progressLabel: "Kırpılıyor",

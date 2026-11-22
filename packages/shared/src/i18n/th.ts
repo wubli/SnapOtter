@@ -3390,7 +3390,7 @@ export const th: TranslationKeys = {
       nothingToCut: "กำหนดเวลาที่จะตัดอย่างน้อยหนึ่งด้าน",
       start: "เริ่มต้น",
       end: "สิ้นสุด",
-      precise: "แม่นยำระดับเฟรม (เข้ารหัสใหม่)",
+      precise: "เฟรมสุดท้ายแม่นยำ (เข้ารหัสใหม่ทั้งคลิป)",
       submit: "ตัด",
       submitBatch: "ตัด ({count} ไฟล์)",
       progressLabel: "กำลังตัด",

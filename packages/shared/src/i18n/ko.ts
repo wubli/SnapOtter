@@ -3373,7 +3373,7 @@ export const ko: TranslationKeys = {
       nothingToCut: "적어도 한쪽 끝에 자를 시간을 입력하세요",
       start: "시작",
       end: "끝",
-      precise: "프레임 정밀 (재인코딩)",
+      precise: "정확한 끝 프레임 (클립 전체 재인코딩)",
       submit: "트리밍",
       submitBatch: "트리밍 ({count}개 파일)",
       progressLabel: "트리밍 중",

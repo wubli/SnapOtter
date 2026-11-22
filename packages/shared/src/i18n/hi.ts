@@ -3247,7 +3247,7 @@ export const hi: TranslationKeys = {
       nothingToCut: "कम से कम एक सिरे से काटने का समय दर्ज करें",
       start: "शुरुआत",
       end: "अंत",
-      precise: "फ़्रेम-सटीक (री-एनकोड)",
+      precise: "सटीक अंतिम फ़्रेम (पूरी क्लिप री-एनकोड होती है)",
       submit: "ट्रिम करें",
       submitBatch: "ट्रिम करें ({count} फ़ाइलें)",
       progressLabel: "ट्रिम हो रहा है",

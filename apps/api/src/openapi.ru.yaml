@@ -10044,7 +10044,7 @@ paths:
                     Строка JSON с параметрами:
                     - `startS` (число >= 0, по умолчанию 0) - Время начала в секундах
                     - `endS` (число, обязательно) - Время окончания в секундах (должно быть больше startS)
-                    - `precise` (логическое значение, по умолчанию false) - Перекодировать для точной обрезки по кадрам вместо поиска по ключевым кадрам
+                    - `precise` (логическое значение, по умолчанию false) - Перекодировать весь диапазон, чтобы начало и конец были точными до кадра, вместо копирования от следующего ключевого кадра
             example:
               file: photo.png
               settings: '{}'
@@ -32290,9 +32290,9 @@ x-i18n:
       provenance: machine
       outputHash: 43ecce2c2daf
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/requestBody/content/multipart~1form-data/schema/properties/settings/description:
-      sourceHash: 4e849a9855fc
+      sourceHash: 6a7312703b1d
       provenance: machine
-      outputHash: a0e53220dcbe
+      outputHash: 70c23b035662
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/responses/200/description:
       sourceHash: fb43034e42ed
       provenance: machine

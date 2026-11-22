@@ -10042,7 +10042,7 @@ paths:
                     String JSON dengan opsi:
                     - `startS` (angka >= 0, default 0) - Waktu mulai dalam detik
                     - `endS` (angka, wajib) - Waktu akhir dalam detik (harus setelah startS)
-                    - `precise` (boolean, default false) - Encode ulang untuk potongan akurat per frame, bukan seek keyframe
+                    - `precise` (boolean, default false) - Enkode ulang seluruh rentang agar frame awal dan akhir tepat, bukan menyalin dari keyframe berikutnya
             example:
               file: photo.png
               settings: '{}'
@@ -32288,9 +32288,9 @@ x-i18n:
       provenance: machine
       outputHash: b77dc8151757
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/requestBody/content/multipart~1form-data/schema/properties/settings/description:
-      sourceHash: 4e849a9855fc
+      sourceHash: 6a7312703b1d
       provenance: machine
-      outputHash: 8d7206f49ec0
+      outputHash: 650b45a82afe
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/responses/200/description:
       sourceHash: fb43034e42ed
       provenance: machine

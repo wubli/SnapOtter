@@ -10038,7 +10038,7 @@ paths:
                     JSON-Zeichenkette mit Optionen:
                     - `startS` (Zahl >= 0, Standard 0) - Startzeit in Sekunden
                     - `endS` (Zahl, erforderlich) - Endzeit in Sekunden (muss nach startS liegen)
-                    - `precise` (boolean, Standard false) - Für bildgenaue Schnitte neu kodieren, statt auf Keyframes zu springen
+                    - `precise` (boolean, Standard false) - Den gesamten Bereich neu kodieren, damit Start- und Endframe exakt sind, statt ab dem nächsten Keyframe zu kopieren
             example:
               file: photo.png
               settings: '{}'
@@ -32284,9 +32284,9 @@ x-i18n:
       provenance: machine
       outputHash: f34754a4ee38
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/requestBody/content/multipart~1form-data/schema/properties/settings/description:
-      sourceHash: 4e849a9855fc
+      sourceHash: 6a7312703b1d
       provenance: machine
-      outputHash: eee5123582dc
+      outputHash: a9eec6317f92
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/responses/200/description:
       sourceHash: fb43034e42ed
       provenance: machine

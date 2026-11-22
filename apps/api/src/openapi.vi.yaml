@@ -10041,7 +10041,7 @@ paths:
                     Chuỗi JSON với các tùy chọn:
                     - `startS` (số >= 0, mặc định 0) - Thời điểm bắt đầu tính bằng giây
                     - `endS` (số, bắt buộc) - Thời điểm kết thúc tính bằng giây (phải sau startS)
-                    - `precise` (boolean, mặc định false) - Mã hóa lại để cắt chính xác từng khung hình thay vì tìm theo khung khóa
+                    - `precise` (boolean, mặc định false) - Mã hóa lại toàn bộ phạm vi để khung hình đầu và cuối chính xác, thay vì sao chép từ keyframe kế tiếp
             example:
               file: photo.png
               settings: '{}'
@@ -32286,9 +32286,9 @@ x-i18n:
       provenance: machine
       outputHash: c0c3871143a7
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/requestBody/content/multipart~1form-data/schema/properties/settings/description:
-      sourceHash: 4e849a9855fc
+      sourceHash: 6a7312703b1d
       provenance: machine
-      outputHash: 5919b9d4b24d
+      outputHash: 007fef6a0fff
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/responses/200/description:
       sourceHash: fb43034e42ed
       provenance: machine

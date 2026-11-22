@@ -3172,7 +3172,7 @@ export const zhTW: TranslationKeys = {
       nothingToCut: "請至少為一端設定要裁掉的時長",
       start: "開始",
       end: "結束",
-      precise: "逐幀精準（重新編碼）",
+      precise: "精準結束幀（重新編碼整個片段）",
       submit: "修剪",
       submitBatch: "修剪（{count} 個檔案）",
       progressLabel: "正在修剪",

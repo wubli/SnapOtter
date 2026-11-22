@@ -10044,7 +10044,7 @@ paths:
                     سلسلة JSON تحتوي على الخيارات:
                     - `startS` (رقم >= 0، الافتراضي 0) - وقت البداية بالثواني
                     - `endS` (رقم، مطلوب) - وقت النهاية بالثواني (يجب أن يكون بعد startS)
-                    - `precise` (منطقي، الافتراضي false) - إعادة الترميز للقطع الدقيقة على مستوى الإطار بدلًا من البحث على الإطارات المفتاحية
+                    - `precise` (منطقي، الافتراضي false) - إعادة ترميز النطاق بأكمله للحصول على إطاري بداية ونهاية دقيقين بدلاً من النسخ من الإطار المفتاحي التالي
             example:
               file: photo.png
               settings: '{}'
@@ -32290,9 +32290,9 @@ x-i18n:
       provenance: machine
       outputHash: 48edf4199a05
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/requestBody/content/multipart~1form-data/schema/properties/settings/description:
-      sourceHash: 4e849a9855fc
+      sourceHash: 6a7312703b1d
       provenance: machine
-      outputHash: 57532a97c194
+      outputHash: a1582c4ec356
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/responses/200/description:
       sourceHash: fb43034e42ed
       provenance: machine

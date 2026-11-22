@@ -10042,7 +10042,7 @@ paths:
                     Stringa JSON con le opzioni:
                     - `startS` (numero >= 0, predefinito 0) - Ora di inizio in secondi
                     - `endS` (numero, obbligatorio) - Ora di fine in secondi (deve essere successiva a startS)
-                    - `precise` (booleano, predefinito false) - Ricodifica per tagli precisi al fotogramma invece del seek sui keyframe
+                    - `precise` (booleano, predefinito false) - Ricodifica l'intero intervallo per avere fotogrammi iniziale e finale esatti, invece di copiare dal keyframe successivo
             example:
               file: photo.png
               settings: '{}'
@@ -32288,9 +32288,9 @@ x-i18n:
       provenance: machine
       outputHash: 6e1b67e918af
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/requestBody/content/multipart~1form-data/schema/properties/settings/description:
-      sourceHash: 4e849a9855fc
+      sourceHash: 6a7312703b1d
       provenance: machine
-      outputHash: cc03b63f2f8f
+      outputHash: 9d37ae4af2c3
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/responses/200/description:
       sourceHash: fb43034e42ed
       provenance: machine

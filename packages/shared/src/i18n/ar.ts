@@ -3418,7 +3418,7 @@ export const ar: TranslationKeys = {
       nothingToCut: "حدّد مدة للقص من طرف واحد على الأقل",
       start: "البداية",
       end: "النهاية",
-      precise: "دقة الإطار (إعادة ترميز)",
+      precise: "إطار نهاية دقيق (يعيد ترميز المقطع بالكامل)",
       submit: "قص",
       submitBatch: "قص ({count} ملفات)",
       progressLabel: "جارٍ القص",

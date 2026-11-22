@@ -9998,7 +9998,7 @@ paths:
                     JSON-string met opties:
                     - `startS` (number >= 0, standaard 0) - Starttijd in seconden
                     - `endS` (number, verplicht) - Eindtijd in seconden (moet na startS liggen)
-                    - `precise` (boolean, standaard false) - Opnieuw coderen voor frame-nauwkeurige knippen in plaats van zoeken op keyframe
+                    - `precise` (boolean, standaard false) - Het hele bereik opnieuw coderen voor exacte begin- en eindframes in plaats van kopiëren vanaf de volgende keyframe
             example:
               file: photo.png
               settings: '{}'
@@ -32216,9 +32216,9 @@ x-i18n:
       provenance: machine
       outputHash: 2abf8651618a
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/requestBody/content/multipart~1form-data/schema/properties/settings/description:
-      sourceHash: 4e849a9855fc
+      sourceHash: 6a7312703b1d
       provenance: machine
-      outputHash: 1dc46c68ad9b
+      outputHash: 60f2bd7fa829
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/responses/200/description:
       sourceHash: fb43034e42ed
       provenance: machine

@@ -3452,7 +3452,7 @@ export const ru: TranslationKeys = {
       nothingToCut: "Укажите время обрезки хотя бы для одного края",
       start: "Начало",
       end: "Конец",
-      precise: "Покадровая точность (перекодировка)",
+      precise: "Точный конечный кадр (перекодирует весь клип)",
       submit: "Обрезать",
       submitBatch: "Обрезать ({count} файлов)",
       progressLabel: "Обрезка",

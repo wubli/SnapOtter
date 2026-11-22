@@ -9982,7 +9982,7 @@ paths:
                     選項的 JSON 字串：
                     - `startS`（number >= 0，預設 0）- 起始時間（秒）
                     - `endS`（number，必填）- 結束時間（秒，必須晚於 startS）
-                    - `precise`（boolean，預設 false）- 為影格精準剪輯而重新編碼，而非以關鍵影格定位
+                    - `precise`（boolean，預設 false）- 重新編碼整個範圍，讓起訖影格都精準，而不是從下一個關鍵影格開始複製
             example:
               file: photo.png
               settings: '{}'
@@ -32198,9 +32198,9 @@ x-i18n:
       provenance: machine
       outputHash: a8bd3c97ee8d
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/requestBody/content/multipart~1form-data/schema/properties/settings/description:
-      sourceHash: 4e849a9855fc
+      sourceHash: 6a7312703b1d
       provenance: machine
-      outputHash: c22e0f95a2c5
+      outputHash: 1f808a15ffba
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/responses/200/description:
       sourceHash: fb43034e42ed
       provenance: machine

@@ -9997,7 +9997,7 @@ paths:
                     สตริง JSON พร้อมตัวเลือก:
                     - `startS` (ตัวเลข >= 0, ค่าเริ่มต้น 0) - เวลาเริ่มต้นเป็นวินาที
                     - `endS` (ตัวเลข, จำเป็น) - เวลาสิ้นสุดเป็นวินาที (ต้องมากกว่า startS)
-                    - `precise` (boolean, ค่าเริ่มต้น false) - เข้ารหัสใหม่เพื่อตัดให้แม่นยำระดับเฟรม แทนการค้นหาจากคีย์เฟรม
+                    - `precise` (boolean, ค่าเริ่มต้น false) - เข้ารหัสใหม่ทั้งช่วงเพื่อให้เฟรมเริ่มต้นและสิ้นสุดแม่นยำ แทนการคัดลอกจาก keyframe ถัดไป
             example:
               file: photo.png
               settings: '{}'
@@ -32215,9 +32215,9 @@ x-i18n:
       provenance: machine
       outputHash: 1ebf6c25faf0
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/requestBody/content/multipart~1form-data/schema/properties/settings/description:
-      sourceHash: 4e849a9855fc
+      sourceHash: 6a7312703b1d
       provenance: machine
-      outputHash: fd067b242d26
+      outputHash: e1a6c3be60e2
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/responses/200/description:
       sourceHash: fb43034e42ed
       provenance: machine

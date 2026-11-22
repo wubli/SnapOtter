@@ -10036,7 +10036,7 @@ paths:
                     옵션이 담긴 JSON 문자열:
                     - `startS` (숫자 >= 0, 기본값 0) - 시작 시간(초)
                     - `endS` (숫자, 필수) - 끝 시간(초, startS보다 커야 함)
-                    - `precise` (불리언, 기본값 false) - 키프레임 탐색 대신 프레임 단위로 정확히 자르기 위해 다시 인코딩
+                    - `precise` (불리언, 기본값 false) - 다음 키프레임부터 복사하는 대신 전체 구간을 다시 인코딩하여 시작 프레임과 끝 프레임을 정확하게 맞춤
             example:
               file: photo.png
               settings: '{}'
@@ -32282,9 +32282,9 @@ x-i18n:
       provenance: machine
       outputHash: 17fd224bba8f
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/requestBody/content/multipart~1form-data/schema/properties/settings/description:
-      sourceHash: 4e849a9855fc
+      sourceHash: 6a7312703b1d
       provenance: machine
-      outputHash: 5bb931d09fce
+      outputHash: 0f518590e150
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/responses/200/description:
       sourceHash: fb43034e42ed
       provenance: machine

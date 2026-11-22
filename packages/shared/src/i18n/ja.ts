@@ -3399,7 +3399,7 @@ export const ja: TranslationKeys = {
       nothingToCut: "少なくとも一方の端にカットする時間を指定してください",
       start: "開始",
       end: "終了",
-      precise: "フレーム単位 (再エンコード)",
+      precise: "終了フレームを正確に (クリップ全体を再エンコード)",
       submit: "トリミング",
       submitBatch: "トリミング ({count} ファイル)",
       progressLabel: "トリミング中",

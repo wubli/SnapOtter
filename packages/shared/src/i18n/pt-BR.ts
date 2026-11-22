@@ -3450,7 +3450,7 @@ export const ptBR: TranslationKeys = {
       nothingToCut: "Defina um tempo de corte para pelo menos uma das pontas",
       start: "Início",
       end: "Fim",
-      precise: "Preciso por quadro (recodifica)",
+      precise: "Quadro final exato (recodifica o clipe inteiro)",
       submit: "Cortar",
       submitBatch: "Cortar ({count} arquivos)",
       progressLabel: "Cortando",

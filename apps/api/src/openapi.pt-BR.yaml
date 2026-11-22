@@ -10042,7 +10042,7 @@ paths:
                     String JSON com as opções:
                     - `startS` (número >= 0, padrão 0) - Tempo inicial em segundos
                     - `endS` (número, obrigatório) - Tempo final em segundos (deve ser posterior a startS)
-                    - `precise` (booleano, padrão false) - Recodificar para cortes precisos por quadro, em vez de busca por keyframe
+                    - `precise` (booleano, padrão false) - Recodificar todo o intervalo para que o início e o fim fiquem exatos no quadro, em vez de copiar a partir do próximo keyframe
             example:
               file: photo.png
               settings: '{}'
@@ -32288,9 +32288,9 @@ x-i18n:
       provenance: machine
       outputHash: a54c5b12f15a
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/requestBody/content/multipart~1form-data/schema/properties/settings/description:
-      sourceHash: 4e849a9855fc
+      sourceHash: 6a7312703b1d
       provenance: machine
-      outputHash: c2bc4be5c12f
+      outputHash: a85648859e54
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/responses/200/description:
       sourceHash: fb43034e42ed
       provenance: machine

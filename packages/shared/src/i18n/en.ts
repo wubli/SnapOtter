@@ -3383,7 +3383,7 @@ export const en = {
       nothingToCut: "Set a time to cut from at least one end",
       start: "Start",
       end: "End",
-      precise: "Frame-accurate (re-encodes)",
+      precise: "Exact end frame (re-encodes the whole clip)",
       submit: "Trim",
       submitBatch: "Trim ({count} files)",
       progressLabel: "Trimming",

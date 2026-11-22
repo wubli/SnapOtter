@@ -3440,7 +3440,7 @@ export const sv: TranslationKeys = {
       nothingToCut: "Ange en tid att klippa för minst en ände",
       start: "Start",
       end: "Slut",
-      precise: "Bildruteexakt (omkodas)",
+      precise: "Exakt slutbildruta (omkodar hela klippet)",
       submit: "Trimma",
       submitBatch: "Trimma ({count} filer)",
       progressLabel: "Trimmar",

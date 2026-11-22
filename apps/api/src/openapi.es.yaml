@@ -10044,7 +10044,7 @@ paths:
                     Cadena JSON con opciones:
                     - `startS` (número >= 0, por defecto 0) - Tiempo de inicio en segundos
                     - `endS` (número, obligatorio) - Tiempo de fin en segundos (debe ser posterior a startS)
-                    - `precise` (booleano, por defecto false) - Recodificar para cortes exactos por fotograma en lugar de buscar por fotograma clave
+                    - `precise` (booleano, por defecto false) - Recodifica todo el rango para que los fotogramas de inicio y fin sean exactos, en lugar de copiar desde el siguiente fotograma clave
             example:
               file: photo.png
               settings: '{}'
@@ -32290,9 +32290,9 @@ x-i18n:
       provenance: machine
       outputHash: 31a165a93c6f
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/requestBody/content/multipart~1form-data/schema/properties/settings/description:
-      sourceHash: 4e849a9855fc
+      sourceHash: 6a7312703b1d
       provenance: machine
-      outputHash: 1b53b8d23812
+      outputHash: 73f76ddafa17
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/responses/200/description:
       sourceHash: fb43034e42ed
       provenance: machine

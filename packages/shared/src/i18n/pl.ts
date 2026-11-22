@@ -3449,7 +3449,7 @@ export const pl: TranslationKeys = {
       nothingToCut: "Ustaw czas przycięcia dla co najmniej jednego końca",
       start: "Początek",
       end: "Koniec",
-      precise: "Dokładność klatkowa (ponowne kodowanie)",
+      precise: "Dokładna klatka końcowa (ponowne kodowanie całego klipu)",
       submit: "Przytnij",
       submitBatch: "Przytnij ({count} plików)",
       progressLabel: "Przycinanie",

@@ -3463,7 +3463,7 @@ export const fr: TranslationKeys = {
       nothingToCut: "Indiquez une durée à couper pour au moins une extrémité",
       start: "Début",
       end: "Fin",
-      precise: "Coupe précise (réencodage)",
+      precise: "Image de fin exacte (réencode tout le clip)",
       submit: "Découper",
       submitBatch: "Découper ({count} fichiers)",
       progressLabel: "Découpage",

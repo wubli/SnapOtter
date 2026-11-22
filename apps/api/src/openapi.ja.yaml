@@ -9999,7 +9999,7 @@ paths:
                     オプションを含む JSON 文字列:
                     - `startS` (number >= 0, デフォルト 0) - 開始時刻（秒）
                     - `endS` (number, 必須) - 終了時刻（秒、startS より後である必要があります）
-                    - `precise` (boolean, デフォルト false) - キーフレームのシークではなく、フレーム単位で正確に切るため再エンコード
+                    - `precise` (boolean, デフォルト false) - 次のキーフレームからコピーする代わりに、範囲全体を再エンコードして開始フレームと終了フレームを正確にする
             example:
               file: photo.png
               settings: '{}'
@@ -32217,9 +32217,9 @@ x-i18n:
       provenance: machine
       outputHash: 7e9661215f66
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/requestBody/content/multipart~1form-data/schema/properties/settings/description:
-      sourceHash: 4e849a9855fc
+      sourceHash: 6a7312703b1d
       provenance: machine
-      outputHash: 240ce03a3db9
+      outputHash: 35156f80db0f
     ptr:/paths/~1api~1v1~1tools~1video~1trim-video/post/responses/200/description:
       sourceHash: fb43034e42ed
       provenance: machine
