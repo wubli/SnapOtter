@@ -1,7 +1,7 @@
 ---
 description: "Eksiksiz REST API başvurusu. Araç uç noktaları, toplu işleme, işlem hatları, dosya kitaplığı, kimlik doğrulama, ekipler ve yönetici işlemleri."
-i18n_output_hash: 046a7bca9d39
-i18n_source_hash: d772f94e7a5d
+i18n_output_hash: 585ee6a8529c
+i18n_source_hash: d23a5d87da4a
 i18n_provenance: human
 ---
 
@@ -342,7 +342,7 @@ Tüm yapay zeka araçları kendi donanımınızda çalışır: varsayılan olara
 | `linearize-pdf` | PDF'yi Web İçin İyileştir | - (hızlı web görüntüleme için doğrusallaştırır) |
 | `grayscale-pdf` | PDF'yi Gri Tonlamaya Çevir | - |
 | `pdfa-convert` | PDF/A Dönüştür | - (arşiv PDF/A-2) |
-| `crop-pdf` | PDF'yi Kırp | `margin` (0-2000 punto) |
+| `crop-pdf` | PDF'yi Kırp | `mode` (uniform/sides/region), `margin` (0-2000 punto), `top`/`right`/`bottom`/`left`, `x`/`y`/`width`/`height` |
 | `resize-pdf-pages` | PDF Sayfalarını Yeniden Boyutlandır | `pageSize` (`4x6in`, `100x150mm`, `a4`, `a5`, `a6`, `letter`, `legal`, `custom`), `width`, `height`, `unit` (`in`, `mm`), `keepOrientation` |
 | `nup-pdf` | N-up PDF | `perSheet` (2/3/4/8/9/12/16) |
 | `booklet-pdf` | Kitapçık PDF | `perSheet` (2/4/6/8) |

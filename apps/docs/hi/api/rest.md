@@ -1,7 +1,7 @@
 ---
 description: "संपूर्ण REST API संदर्भ। टूल एंडपॉइंट, बैच प्रोसेसिंग, पाइपलाइन, फ़ाइल लाइब्रेरी, प्रमाणीकरण, टीमें और एडमिन संचालन।"
-i18n_output_hash: da222a2bea50
-i18n_source_hash: d772f94e7a5d
+i18n_output_hash: ebaad07b3534
+i18n_source_hash: d23a5d87da4a
 i18n_provenance: human
 ---
 
@@ -342,7 +342,7 @@ curl -X POST http://localhost:1349/api/v1/tools/<section>/<toolId>/batch \
 | `linearize-pdf` | PDF वेब-ऑप्टिमाइज़ करें | - (तेज़ वेब देखने के लिए लीनियराइज़) |
 | `grayscale-pdf` | PDF ग्रेस्केल | - |
 | `pdfa-convert` | PDF/A कन्वर्ट | - (आर्काइवल PDF/A-2) |
-| `crop-pdf` | PDF क्रॉप करें | `margin` (0-2000 पॉइंट) |
+| `crop-pdf` | PDF क्रॉप करें | `mode` (uniform/sides/region), `margin` (0-2000 पॉइंट), `top`/`right`/`bottom`/`left`, `x`/`y`/`width`/`height` |
 | `resize-pdf-pages` | PDF पेज का आकार बदलें | `pageSize` (`4x6in`, `100x150mm`, `a4`, `a5`, `a6`, `letter`, `legal`, `custom`), `width`, `height`, `unit` (`in`, `mm`), `keepOrientation` |
 | `nup-pdf` | N-up PDF | `perSheet` (2/3/4/8/9/12/16) |
 | `booklet-pdf` | बुकलेट PDF | `perSheet` (2/4/6/8) |

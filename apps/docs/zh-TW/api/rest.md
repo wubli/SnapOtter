@@ -1,7 +1,7 @@
 ---
 description: "完整的 REST API 參考。工具端點、批次處理、管線、檔案庫、驗證、團隊與管理操作。"
-i18n_output_hash: 3f934ab6f7b1
-i18n_source_hash: d772f94e7a5d
+i18n_output_hash: 267d993c40e1
+i18n_source_hash: d23a5d87da4a
 i18n_provenance: human
 ---
 
@@ -342,7 +342,7 @@ curl -X POST http://localhost:1349/api/v1/tools/<section>/<toolId>/batch \
 | `linearize-pdf` | Web 最佳化 PDF | - （線性化以便快速網頁檢視） |
 | `grayscale-pdf` | 灰階 PDF | - |
 | `pdfa-convert` | PDF/A 轉換 | - （封存用 PDF/A-2） |
-| `crop-pdf` | 裁切 PDF | `margin`（0-2000 點） |
+| `crop-pdf` | 裁切 PDF | `mode`（uniform/sides/region）, `margin`（0-2000 點）, `top`/`right`/`bottom`/`left`, `x`/`y`/`width`/`height` |
 | `resize-pdf-pages` | 調整 PDF 頁面尺寸 | `pageSize` (`4x6in`, `100x150mm`, `a4`, `a5`, `a6`, `letter`, `legal`, `custom`), `width`, `height`, `unit` (`in`, `mm`), `keepOrientation` |
 | `nup-pdf` | N-up PDF | `perSheet`（2/3/4/8/9/12/16） |
 | `booklet-pdf` | 小冊子 PDF | `perSheet`（2/4/6/8） |

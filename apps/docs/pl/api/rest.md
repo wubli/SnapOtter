@@ -1,8 +1,8 @@
 ---
 description: "Kompletna dokumentacja API REST. Punkty końcowe narzędzi, przetwarzanie wsadowe, potoki, biblioteka plików, uwierzytelnianie, zespoły i operacje administracyjne."
-i18n_output_hash: 1a64cb5f85cc
+i18n_output_hash: 8bff676f8531
 i18n_hash_version: 2
-i18n_source_hash: d772f94e7a5d
+i18n_source_hash: d23a5d87da4a
 i18n_provenance: human
 ---
 
@@ -343,7 +343,7 @@ Wszystkie narzędzia AI działają na Twoim sprzęcie: domyślnie na CPU lub na 
 | `linearize-pdf` | Optymalizacja PDF pod kątem internetu | - (linearyzacja dla szybkiego przeglądania w sieci) |
 | `grayscale-pdf` | PDF w skali szarości | - |
 | `pdfa-convert` | Konwersja do PDF/A | - (archiwalny PDF/A-2) |
-| `crop-pdf` | Kadrowanie PDF | `margin` (0-2000 punktów) |
+| `crop-pdf` | Kadrowanie PDF | `mode` (uniform/sides/region), `margin` (0-2000 punktów), `top`/`right`/`bottom`/`left`, `x`/`y`/`width`/`height` |
 | `resize-pdf-pages` | Zmień rozmiar stron PDF | `pageSize` (`4x6in`, `100x150mm`, `a4`, `a5`, `a6`, `letter`, `legal`, `custom`), `width`, `height`, `unit` (`in`, `mm`), `keepOrientation` |
 | `nup-pdf` | N-up PDF | `perSheet` (2/3/4/8/9/12/16) |
 | `booklet-pdf` | Broszura PDF | `perSheet` (2/4/6/8) |

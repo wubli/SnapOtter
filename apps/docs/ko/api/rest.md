@@ -1,7 +1,7 @@
 ---
 description: "전체 REST API 레퍼런스. 도구 엔드포인트, 배치 처리, 파이프라인, 파일 라이브러리, 인증, 팀, 관리 작업."
-i18n_output_hash: 05eecf7d7390
-i18n_source_hash: d772f94e7a5d
+i18n_output_hash: 28837b5efdd1
+i18n_source_hash: d23a5d87da4a
 i18n_provenance: human
 ---
 
@@ -342,7 +342,7 @@ curl -X POST http://localhost:1349/api/v1/tools/<section>/<toolId>/batch \
 | `linearize-pdf` | PDF 웹 최적화 | - (빠른 웹 뷰잉을 위한 선형화) |
 | `grayscale-pdf` | PDF 흑백화 | - |
 | `pdfa-convert` | PDF/A 변환 | - (보존용 PDF/A-2) |
-| `crop-pdf` | PDF 자르기 | `margin`(0-2000 포인트) |
+| `crop-pdf` | PDF 자르기 | `mode`(uniform/sides/region), `margin`(0-2000 포인트), `top`/`right`/`bottom`/`left`, `x`/`y`/`width`/`height` |
 | `resize-pdf-pages` | PDF 페이지 크기 조정 | `pageSize` (`4x6in`, `100x150mm`, `a4`, `a5`, `a6`, `letter`, `legal`, `custom`), `width`, `height`, `unit` (`in`, `mm`), `keepOrientation` |
 | `nup-pdf` | N-up PDF | `perSheet`(2/3/4/8/9/12/16) |
 | `booklet-pdf` | 소책자 PDF | `perSheet`(2/4/6/8) |

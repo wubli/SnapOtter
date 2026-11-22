@@ -1,7 +1,7 @@
 ---
 description: "完全な REST API リファレンス。ツールエンドポイント、バッチ処理、パイプライン、ファイルライブラリ、認証、チーム、管理者操作。"
-i18n_output_hash: 22e34d1ecafe
-i18n_source_hash: d772f94e7a5d
+i18n_output_hash: 9b0b0f13195b
+i18n_source_hash: d23a5d87da4a
 i18n_provenance: human
 ---
 
@@ -342,7 +342,7 @@ curl -X POST http://localhost:1349/api/v1/tools/<section>/<toolId>/batch \
 | `linearize-pdf` | PDF の Web 最適化 | -（高速な Web 表示のためにリニアライズ） |
 | `grayscale-pdf` | PDF のグレースケール化 | - |
 | `pdfa-convert` | PDF/A 変換 | -（アーカイブ用 PDF/A-2） |
-| `crop-pdf` | PDF のクロップ | `margin`（0-2000 ポイント） |
+| `crop-pdf` | PDF のクロップ | `mode`（uniform/sides/region）, `margin`（0-2000 ポイント）, `top`/`right`/`bottom`/`left`, `x`/`y`/`width`/`height` |
 | `resize-pdf-pages` | PDF ページサイズ変更 | `pageSize` (`4x6in`, `100x150mm`, `a4`, `a5`, `a6`, `letter`, `legal`, `custom`), `width`, `height`, `unit` (`in`, `mm`), `keepOrientation` |
 | `nup-pdf` | N-up PDF | `perSheet`（2/3/4/8/9/12/16） |
 | `booklet-pdf` | ブックレット PDF | `perSheet`（2/4/6/8） |

@@ -1,7 +1,7 @@
 ---
 description: "เอกสารอ้างอิง REST API ฉบับสมบูรณ์ เอนด์พอยต์ของเครื่องมือ การประมวลผลแบบแบตช์ ไปป์ไลน์ คลังไฟล์ การยืนยันตัวตน ทีม และการดำเนินงานของผู้ดูแลระบบ"
-i18n_output_hash: b85e5c14d250
-i18n_source_hash: d772f94e7a5d
+i18n_output_hash: c8b5fe231175
+i18n_source_hash: d23a5d87da4a
 i18n_provenance: human
 ---
 
@@ -342,7 +342,7 @@ curl -X POST http://localhost:1349/api/v1/tools/<section>/<toolId>/batch \
 | `linearize-pdf` | ปรับ PDF ให้เหมาะกับเว็บ | - (linearize เพื่อการดูบนเว็บที่รวดเร็ว) |
 | `grayscale-pdf` | PDF ระดับสีเทา | - |
 | `pdfa-convert` | แปลงเป็น PDF/A | - (PDF/A-2 สำหรับการเก็บถาวร) |
-| `crop-pdf` | ครอป PDF | `margin` (0-2000 จุด) |
+| `crop-pdf` | ครอป PDF | `mode` (uniform/sides/region), `margin` (0-2000 จุด), `top`/`right`/`bottom`/`left`, `x`/`y`/`width`/`height` |
 | `resize-pdf-pages` | ปรับขนาดหน้า PDF | `pageSize` (`4x6in`, `100x150mm`, `a4`, `a5`, `a6`, `letter`, `legal`, `custom`), `width`, `height`, `unit` (`in`, `mm`), `keepOrientation` |
 | `nup-pdf` | N-up PDF | `perSheet` (2/3/4/8/9/12/16) |
 | `booklet-pdf` | สมุดพับ PDF | `perSheet` (2/4/6/8) |
