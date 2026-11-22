@@ -1,7 +1,7 @@
 ---
 description: "Referensi REST API lengkap. Endpoint tool, pemrosesan batch, pipeline, pustaka file, autentikasi, tim, dan operasi admin."
-i18n_output_hash: 1557558b7234
-i18n_source_hash: baf6f1fff48e
+i18n_output_hash: ad57b003ea48
+i18n_source_hash: 3cc77a46e0fe
 i18n_provenance: human
 ---
 

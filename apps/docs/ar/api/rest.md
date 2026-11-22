@@ -1,7 +1,7 @@
 ---
 description: "مرجع REST API الكامل. نقاط نهاية الأدوات، والمعالجة الدفعية، وخطوط المعالجة، ومكتبة الملفات، والمصادقة، والفرق، وعمليات الإدارة."
-i18n_output_hash: 2ceddbd16953
-i18n_source_hash: baf6f1fff48e
+i18n_output_hash: 575c499bcc7e
+i18n_source_hash: 3cc77a46e0fe
 i18n_provenance: human
 ---
 
