@@ -479,6 +479,7 @@ function buildBaseTheme() {
                   { text: "Histogram", link: "/tools/image/histogram" },
                   { text: "LQIP Placeholder", link: "/tools/image/lqip-placeholder" },
                   { text: "Barcode Generator", link: "/tools/image/barcode-generate" },
+                  { text: "Aspect Ratio Calculator", link: "/tools/image/aspect-ratio-calculator" },
                 ],
               },
               {
