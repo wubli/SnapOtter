@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { getOptionalBundleForTool, getRequiredBundlesForTool } from "@snapotter/shared";
 import { describe, expect, it } from "vitest";
 import { getToolConfig } from "../../../apps/api/src/routes/tool-factory.js";
 import { registerCompressPdf } from "../../../apps/api/src/routes/tools/compress-pdf.js";
@@ -46,6 +47,29 @@ describe("generated QA harness contract", () => {
     expect(text).toContain("requiredAiGate(toolId");
     expect(text).toContain("firstMissingBundle: getFirstMissingBundleForTool");
     expect(text).not.toMatch(/&& !REQUIRE_AI_FEATURES\)/);
+  });
+
+  // #5196: smart-crop's face-detection bundle is optional, so a whole-tool skip
+  // hid its subject and trim cases from every CI run. Only a tool with no
+  // required bundle may bypass the gate, and it must stay AI-gated so its
+  // bundle-needing cases still meet the per-request 501 handling.
+  it("settings matrix gates optional-bundle-only tools per request, not per tool", () => {
+    const text = source("settings-matrix.test.ts");
+    const setMembers = (name: string): string[] => {
+      const body = text.match(new RegExp(`const ${name} = new Set\\(\\[([^\\]]*)\\]\\)`))?.[1];
+      expect(body, `${name} not found in settings-matrix.test.ts`).toBeDefined();
+      return [...(body ?? "").matchAll(/"([^"]+)"/g)].map((m) => m[1] as string);
+    };
+    const perRequest = setMembers("PER_REQUEST_AI_GATED_TOOLS");
+    const aiGated = setMembers("AI_GATED_TOOLS");
+
+    expect(perRequest).toContain("smart-crop");
+    for (const toolId of perRequest) {
+      expect(aiGated, `${toolId} must stay AI-gated`).toContain(toolId);
+      expect(getRequiredBundlesForTool(toolId), `${toolId} has a required bundle`).toEqual([]);
+      expect(getOptionalBundleForTool(toolId), `${toolId} has no optional bundle`).not.toBeNull();
+    }
+    expect(text).toMatch(/!PER_REQUEST_AI_GATED_TOOLS\.has\(toolId\)/);
   });
 
   it("multimodal matrix consumes the shared image-inclusive fixture index", () => {

@@ -1179,6 +1179,12 @@ const AI_GATED_TOOLS = new Set([
   "vectorize",
 ]);
 
+// AI-gated tools whose only bundle is optional and needed by some settings, not
+// by the tool. smart-crop needs face-detection for mode "face" alone; subject
+// and trim are plain Sharp. These skip the whole-tool gate, so each case that
+// needs the bundle meets the 501 handling below on its own (#5196).
+const PER_REQUEST_AI_GATED_TOOLS = new Set(["smart-crop"]);
+
 // Accepted status codes: 200 = success, 202 = async, 400 = bad settings,
 // 422 = processing failure, 415 = wrong type
 const ACCEPTED_STATUSES = new Set([200, 202, 400, 415, 422]);
@@ -1209,13 +1215,14 @@ describe("settings variation matrix", () => {
     const missingPython = allPythonVariationsUnavailable
       ? findMissingGeneratedPythonPrerequisite(toolId, variations[0]?.settings)
       : undefined;
-    const aiGate = AI_GATED_TOOLS.has(toolId)
-      ? requiredAiGate(toolId, {
-          requireAiFeatures: REQUIRE_AI_FEATURES,
-          firstMissingBundle: getFirstMissingBundleForTool,
-          dataDir: process.env.DATA_DIR,
-        })
-      : undefined;
+    const aiGate =
+      AI_GATED_TOOLS.has(toolId) && !PER_REQUEST_AI_GATED_TOOLS.has(toolId)
+        ? requiredAiGate(toolId, {
+            requireAiFeatures: REQUIRE_AI_FEATURES,
+            firstMissingBundle: getFirstMissingBundleForTool,
+            dataDir: process.env.DATA_DIR,
+          })
+        : undefined;
     if (aiGate?.kind === "fail") {
       it(`${toolId} -- required AI bundle installed`, () => {
         throw new Error(aiGate.reason);
