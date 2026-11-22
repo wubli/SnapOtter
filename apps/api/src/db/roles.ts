@@ -24,6 +24,22 @@ function assertSafeRole(role: string): void {
 // that name the same server over pure cosmetics.
 const DEFAULT_PG_PORT = "5432";
 
+// node-postgres copies query params in order, so a repeated one's last value wins.
+function lastParam(u: URL, name: string): string | undefined {
+  return u.searchParams.getAll(name).at(-1);
+}
+
+// node-postgres takes ?user= and ?password= over the userinfo. WHATWG URL keeps
+// userinfo percent-encoded (a password like "p@ss" arrives as "p%40ss"), while
+// searchParams are already decoded.
+function effectiveUser(u: URL): string {
+  return lastParam(u, "user") || decodeURIComponent(u.username);
+}
+
+function effectivePassword(u: URL): string {
+  return lastParam(u, "password") || decodeURIComponent(u.password);
+}
+
 function sameTarget(a: URL, b: URL): boolean {
   return (
     a.hostname.toLowerCase() === b.hostname.toLowerCase() &&
@@ -42,10 +58,8 @@ export function resolveRoleSplit(runtimeUrl: string, migrationUrl: string): Role
   }
 
   const runtime = new URL(runtimeUrl);
-  // WHATWG URL keeps userinfo percent-encoded, so a password like "p@ss" arrives
-  // as "p%40ss" and has to be decoded before it can be used to log in.
-  const runtimeRole = decodeURIComponent(runtime.username);
-  const runtimePassword = decodeURIComponent(runtime.password);
+  const runtimeRole = effectiveUser(runtime);
+  const runtimePassword = effectivePassword(runtime);
 
   const migration = new URL(migrationUrl);
   if (!sameTarget(runtime, migration)) {
@@ -55,7 +69,7 @@ export function resolveRoleSplit(runtimeUrl: string, migrationUrl: string): Role
     );
   }
 
-  if (decodeURIComponent(migration.username) === runtimeRole) {
+  if (effectiveUser(migration) === runtimeRole) {
     return { active: false, reason: "same-role", migrationUrl };
   }
 
