@@ -9,6 +9,8 @@ import sharp from "sharp";
 import {
   asDecoderOutOfMemory,
   asDecoderUnavailable,
+  asEncoderOutOfMemory,
+  DecoderOutOfMemoryError,
   DecoderUnavailableError,
 } from "./format-decoders.js";
 
@@ -213,13 +215,18 @@ export async function encodeJxl(inputBuffer: Buffer, quality?: number): Promise<
       await execFileAsync("cjxl", [inputPath, outputPath, "-q", q], {
         timeout: 120_000,
       }).catch((err: unknown) => {
-        throw asDecoderUnavailable(asDecoderOutOfMemory(err));
+        throw asDecoderUnavailable(asEncoderOutOfMemory(err));
       });
       return await readFile(outputPath).catch((err: unknown) => {
         throw asDecoderOutOfMemory(err);
       });
     } catch (err: unknown) {
-      if (err instanceof DecoderUnavailableError === false) {
+      // Only a cjxl that can't start falls back. One that ran out of memory
+      // would most likely leave ImageMagick short of memory too (#5263).
+      if (
+        err instanceof DecoderUnavailableError === false ||
+        err instanceof DecoderOutOfMemoryError
+      ) {
         throw err;
       }
       /* cjxl not available, fall back to ImageMagick */

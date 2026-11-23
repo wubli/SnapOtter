@@ -9,6 +9,7 @@ import sharp from "sharp";
 import {
   asDecoderOutOfMemory,
   asDecoderUnavailable,
+  asEncoderOutOfMemory,
   DecoderOutOfMemoryError,
   DecoderUnavailableError,
   noDecoderFound,
@@ -323,7 +324,7 @@ export async function encodeHeic(buffer: Buffer, quality = 80): Promise<Buffer> 
     await execFileAsync("heif-enc", ["-q", String(quality), "-o", outputPath, inputPath], {
       timeout: 120_000,
     }).catch((err: unknown) => {
-      throw asDecoderUnavailable(asDecoderOutOfMemory(err));
+      throw asDecoderUnavailable(asEncoderOutOfMemory(err));
     });
     return await readFile(outputPath).catch((err: unknown) => {
       throw asDecoderOutOfMemory(err);
