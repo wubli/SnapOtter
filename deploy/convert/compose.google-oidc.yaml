@@ -1,0 +1,20 @@
+services:
+  snapotter:
+    env_file:
+      - ./secrets/google-oidc-current/client.env
+    environment:
+      OIDC_ENABLED: "true"
+      OIDC_ISSUER_URL: https://accounts.google.com
+      OIDC_PROVIDER_NAME: Google
+      OIDC_CLIENT_SECRET_FILE: /run/secrets/google_oidc_client_secret
+      OIDC_SCOPES: openid email
+      OIDC_USERNAME_CLAIM: email
+      OIDC_AUTO_CREATE_USERS: "false"
+      OIDC_AUTO_LINK_USERS: "true"
+      OIDC_DEFAULT_ROLE: user
+    secrets:
+      - google_oidc_client_secret
+
+secrets:
+  google_oidc_client_secret:
+    file: ./secrets/google-oidc-current/client_secret

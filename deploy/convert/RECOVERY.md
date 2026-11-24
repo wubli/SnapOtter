@@ -10,7 +10,7 @@ sudo ./recovery-copy.sh /opt/snapotter "/root/snapotter-convert-$(date -u +%Y%m%
 docker compose up -d --pull never
 ```
 
-Keep the project stopped until the script finishes. It checks free space, reads each Compose volume and the deployment configuration into compressed archives, compares each archive against its source, and verifies a SHA-256 manifest. It publishes the backup directory after those checks succeed. The source archive includes the pinned image references. Keep those exact images available in a registry or a separate image export.
+Keep the project stopped until the script finishes. It checks free space, reads each Compose volume and the deployment configuration into compressed archives, compares each archive against its source, and verifies a SHA-256 manifest. It publishes the backup directory after those checks succeed. The deployment archive includes the Google OAuth overlay when the resolved Compose configuration enables OIDC and mounts the Google client secret. The source archive includes the pinned image references. Keep those exact images available in a registry or a separate image export.
 
 ## Retrieve a November 24 recovery copy
 
@@ -55,6 +55,9 @@ tar "${tar_opts[@]}" -xzf "$backup/deployment.tar.gz" -C "$restore"
 compose=(docker compose --project-name "$project" --project-directory "$restore" -f "$restore/compose.yaml")
 if [[ -f "$restore/compose.override.yaml" ]]; then
   compose+=(-f "$restore/compose.override.yaml")
+fi
+if [[ -f "$restore/compose.google-oidc.yaml" ]]; then
+  compose+=(-f "$restore/compose.google-oidc.yaml")
 fi
 volume_list=$("${compose[@]}" config --volumes)
 while IFS= read -r key; do
