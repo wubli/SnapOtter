@@ -21,6 +21,7 @@ All configuration is done through environment variables. Every variable has a se
 | `LOG_LEVEL` | `info` | Log verbosity. One of: `fatal`, `error`, `warn`, `info`, `debug`, `trace`. |
 | `TRUST_PROXY` | `loopback,linklocal,uniquelocal` | Which peers may set the client IP through `X-Forwarded-For`. The default believes only a private-network peer, so a reverse proxy on a Docker network or a LAN is trusted and a public client's forged header is not. Set `true` only when a proxy you control sits in front on a public address. |
 | `SNAPOTTER_ANALYTICS_DEFAULT` | (unset) | Answers the first-run analytics question in advance, so nobody is asked. Unset, a new instance asks its administrator and sends nothing until answered. `off` starts it with "Anonymous Product Analytics" switched off; `on` starts it switched on. It only fills in the setting while nobody has chosen one. Once the setting is saved, by an admin or by this variable, changing the variable does nothing; an admin can still change it under Settings > System > Privacy. |
+| `SNAPOTTER_IDLE_TOKEN_FILE` | (unset) | Path to a readable file containing the shared bearer token for the optional idle controller. Setting it enables idle checks and drain commands on a separate listener at `127.0.0.1:13491`. Use it with a controller on the same instance and leave the listener private. |
 
 ### Authentication {#authentication}
 

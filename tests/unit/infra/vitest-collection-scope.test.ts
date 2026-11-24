@@ -27,6 +27,13 @@ const VITEST_ROOTS = [/^tests\/unit\//, /^tests\/integration\//, /^packages\/[^/
 /** Test-named trees that run under a Playwright config on purpose, never vitest. */
 const PLAYWRIGHT_ROOTS = [/^tests\/e2e[^/]*\//, /^tests\/qa\//];
 
+// These fixtures use Node's built-in test runner so they can run in an
+// isolated wake-service checkout without installing the monorepo dependencies.
+const NODE_TEST_FILES = [
+  "deploy/convert/wake/controller/server.test.mjs",
+  "deploy/convert/wake/pages/worker.test.mjs",
+];
+
 /** What vitest's default filename pattern matches. */
 const TEST_FILENAME = /\.(test|spec)\.[cm]?[jt]sx?$/;
 
@@ -44,11 +51,17 @@ describe("vitest collection scope", () => {
     }
   });
 
+  it("runs the standalone Node suites in unit CI", () => {
+    const workflow = readFileSync(path.join(root, ".github/workflows/ci.yml"), "utf8");
+    expect(workflow).toContain(`node --test ${NODE_TEST_FILES.join(" ")}`);
+  });
+
   it("gives every tracked test-named file a collection owner", () => {
     const orphans = trackedFiles().filter((file) => {
       if (!TEST_FILENAME.test(file)) return false;
       if (VITEST_ROOTS.some((prefix) => prefix.test(file))) return false;
       if (PLAYWRIGHT_ROOTS.some((prefix) => prefix.test(file))) return false;
+      if (NODE_TEST_FILES.includes(file)) return false;
       return true;
     });
     expect(

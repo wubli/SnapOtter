@@ -31,12 +31,12 @@ The fixtures exercise unlock, cross-origin rejection, cookie expiry and tamperin
 3. Create the Direct Upload Pages project if it does not exist. Set the project name and production branch to match the target project.
 
 ~~~sh
-npx wrangler pages project create snapotter-convert-wake --production-branch main
+npx wrangler pages project create snapotter-convert-wake --production-branch main --force
 npx wrangler pages secret bulk "$WAKE_PAGES_SECRET_FILE" --project-name snapotter-convert-wake
 npx wrangler pages deploy public --project-name snapotter-convert-wake --branch main
 ~~~
 
-The secret file is a protected JSON object with the five bindings named above that are absent from the Wrangler file. Use the dashboard's production secret settings if the project is managed with dashboard credentials. The public directory contains only the advanced-mode worker bundle. [Cloudflare Pages Advanced Mode](https://developers.cloudflare.com/pages/functions/advanced-mode/) · [Wrangler Pages commands](https://developers.cloudflare.com/workers/wrangler/commands/pages/)
+Wrangler 4.168 uses `--force` during project creation to select the Pages service that supports an external DNS subdomain. The secret file is a protected JSON object with the five bindings named above that are absent from the Wrangler file. Use the dashboard's production secret settings if the project is managed with dashboard credentials. The public directory contains only the advanced-mode worker bundle. [Cloudflare Pages Advanced Mode](https://developers.cloudflare.com/pages/functions/advanced-mode/) · [Wrangler Pages commands](https://developers.cloudflare.com/workers/wrangler/commands/pages/)
 
 4. Associate convert.henesys.shop with the Pages project as a custom domain, then switch the public DNS to Pages. Keep convert-origin.henesys.shop pointing to the reserved VM address. Bypass response caching for both hostnames. Preview or pages.dev requests return 404 because the worker requires the configured public origin.
 5. Open the public site in a fresh browser and verify the team gate appears. Unlock it, wait for the login form, and verify a conversion. Once the host stops, reopen the public site with the same browser and verify the remembered session starts it automatically. Confirm an unauthorized HTTP health check or upload does not start the VM. Keep the separate SnapOtter login enabled.

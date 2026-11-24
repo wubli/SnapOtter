@@ -48,6 +48,12 @@ Any other 4xx falls back to `BAD_REQUEST`, and any other 5xx to `INTERNAL_ERROR`
 
 A route can set a more specific code, and then the response carries that code instead. For example, a tool that cannot run because its AI bundle is missing returns a feature-specific code. Those codes are described with the feature that raises them.
 
+## Service availability {#service-codes}
+
+| `code` | Status | What to do |
+|--------|--------|------------|
+| `SERVICE_DRAINING` | 503 | The optional idle controller is preparing the server to stop. Wait for the interval in `Retry-After` before retrying. |
+
 ## Authentication and access {#auth-codes}
 
 | `code` | Status | What to do |
