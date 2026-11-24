@@ -30,6 +30,17 @@ import "../../../apps/api/src/routes/tools/transcribe-audio.js";
 let scratchDir: string;
 let controller: AbortController;
 const input = Buffer.from("media");
+let audioFixtures: Buffer[];
+
+function makePcm(durationS: number, audible: [number, number][], level = 4096): Buffer {
+  const pcm = Buffer.alloc(Math.round(durationS * 16_000) * 2);
+  const sample = Buffer.alloc(2);
+  sample.writeInt16LE(level);
+  for (const [start, end] of audible) {
+    pcm.fill(sample, start * 32_000, end * 32_000);
+  }
+  return pcm;
+}
 
 beforeEach(async () => {
   vi.resetAllMocks();
@@ -38,15 +49,23 @@ beforeEach(async () => {
   vi.stubGlobal("fetch", mocks.fetch);
   scratchDir = await mkdtemp(join(tmpdir(), "snapotter-transcription-"));
   controller = new AbortController();
+  audioFixtures = [makePcm(600.02, [[0.4, 1.26]]), makePcm(0.98, [[0.2, 0.7]])];
   mocks.probeMedia.mockResolvedValue({ streams: [{ type: "audio" }] });
   mocks.runFfmpeg.mockImplementation(async (args: string[]) => {
     const list = args[args.indexOf("-segment_list") + 1];
+    const extension = args.includes("s16le") ? "pcm" : "wav";
     await writeFile(
       list,
-      "chunk-000000.wav,0.000000,600.020000\nchunk-000001.wav,600.020000,601.000000\n",
+      `chunk-000000.${extension},0.000000,600.020000\nchunk-000001.${extension},600.020000,601.000000\n`,
     );
-    await writeFile(join(dirname(list), "chunk-000000.wav"), "chunk one");
-    await writeFile(join(dirname(list), "chunk-000001.wav"), "chunk two");
+    await writeFile(
+      join(dirname(list), `chunk-000000.${extension}`),
+      extension === "pcm" ? audioFixtures[0] : "chunk one",
+    );
+    await writeFile(
+      join(dirname(list), `chunk-000001.${extension}`),
+      extension === "pcm" ? audioFixtures[1] : "chunk two",
+    );
   });
 });
 
@@ -114,21 +133,19 @@ describe("OpenAI transcription job processing", () => {
   });
 
   it.each([
-    ["transcribe-audio", { outputFormat: "srt" }, "00:10:00,220 --> 00:10:00,720"],
-    ["auto-subtitles", { format: "vtt" }, "00:10:00.220 --> 00:10:00.720"],
+    ["transcribe-audio", { outputFormat: "srt" }, "00:10:00,160 --> 00:10:00,780"],
+    ["auto-subtitles", { format: "vtt" }, "00:10:00.160 --> 00:10:00.780"],
   ])(
-    "writes real segment timestamps for %s across chunk boundaries",
+    "writes audio-anchored cue timestamps for %s across chunk boundaries",
     async (toolId, settings, cue) => {
       mocks.fetch.mockResolvedValueOnce(
         Response.json({
           text: "Hello.",
-          segments: [{ start: 0, end: 1, text: "Hello." }],
         }),
       );
       mocks.fetch.mockResolvedValueOnce(
         Response.json({
           text: "Goodbye.",
-          segments: [{ start: 0.2, end: 0.7, text: " Goodbye." }],
         }),
       );
 
@@ -137,17 +154,26 @@ describe("OpenAI transcription job processing", () => {
       expect(result.buffer.toString("utf8")).toContain(`${cue}\nGoodbye.`);
       expect(result.resultPayload).toEqual({ language: "en", segments: 2 });
       const form = mocks.fetch.mock.calls[0][1]?.body as FormData;
-      expect(form.get("model")).toBe("whisper-1");
-      expect(form.get("response_format")).toBe("verbose_json");
-      expect(form.get("timestamp_granularities[]")).toBe("segment");
-      expect(form.get("language")).toBe("en");
+      expect(form.get("model")).toBe("gpt-transcribe");
+      expect(form.get("response_format")).toBe("json");
+      expect(form.get("timestamp_granularities[]")).toBeNull();
+      expect(form.get("languages[]")).toBe("en");
+      expect(mocks.fetch).toHaveBeenCalledTimes(2);
+      const file = form.get("file");
+      if (!(file instanceof File)) throw new Error("Expected an audio upload");
+      expect(file.type).toBe("audio/wav");
+      const wave = Buffer.from(await file.arrayBuffer());
+      expect(wave.subarray(0, 12).toString("ascii")).toMatch(/^RIFF.{4}WAVE$/s);
+      expect(wave.readUInt32LE(24)).toBe(16_000);
+      expect(wave.readUInt32LE(40)).toBe((1.32 - 0.34) * 32_000);
     },
   );
 
-  it("returns an empty subtitle artifact with the no-speech warning", async () => {
-    mocks.fetch.mockImplementation(async () => Response.json({ text: "" }));
+  it("returns an empty subtitle artifact without uploading silent media", async () => {
+    audioFixtures = [makePcm(0.5, []), makePcm(0.98, [])];
     const result = await run("auto-subtitles", { provider: "openai", format: "vtt" });
     expect(result.buffer.toString("utf8")).toBe("WEBVTT\n\n");
+    expect(mocks.fetch).not.toHaveBeenCalled();
     expect(result.resultPayload).toMatchObject({
       segments: 0,
       warning: NO_SPEECH_DETECTED_WARNING,
@@ -162,10 +188,37 @@ describe("OpenAI transcription job processing", () => {
     expect(mocks.fetch).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects text without timestamps when subtitles are requested", async () => {
-    mocks.fetch.mockResolvedValue(Response.json({ text: "Untimed text" }));
-    await expect(run("auto-subtitles", { provider: "openai" })).rejects.toThrow(
-      "OpenAI returned an invalid transcription response",
+  it("skips blank transcripts and splits long cues at nearby low-energy frames", async () => {
+    audioFixtures = [
+      makePcm(14, [
+        [0.4, 1.26],
+        [1.9, 7.71],
+        [7.81, 13.4],
+      ]),
+      makePcm(0.98, []),
+    ];
+    mocks.fetch.mockResolvedValueOnce(Response.json({ text: " " }));
+    mocks.fetch.mockResolvedValueOnce(Response.json({ text: "First\n\npart." }));
+    mocks.fetch.mockResolvedValueOnce(Response.json({ text: "Second part." }));
+
+    const result = await run("auto-subtitles", { provider: "openai", format: "vtt" });
+
+    expect(mocks.fetch).toHaveBeenCalledTimes(3);
+    expect(result.buffer.toString("utf8")).toBe(
+      "WEBVTT\n\n00:00:01.840 --> 00:00:07.740\nFirst part.\n\n00:00:07.740 --> 00:00:13.460\nSecond part.\n",
+    );
+    expect(result.resultPayload).toMatchObject({ segments: 2 });
+  });
+
+  it("picks up a low-level signal when it stands above the background", async () => {
+    audioFixtures = [makePcm(1.5, [[0.4, 1.2]], 55), makePcm(0.98, [])];
+    mocks.fetch.mockResolvedValueOnce(Response.json({ text: "Quiet speech." }));
+
+    const result = await run("auto-subtitles", { provider: "openai", format: "srt" });
+
+    expect(mocks.fetch).toHaveBeenCalledTimes(1);
+    expect(result.buffer.toString("utf8")).toContain(
+      "00:00:00,340 --> 00:00:01,260\nQuiet speech.",
     );
   });
 

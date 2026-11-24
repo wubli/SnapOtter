@@ -12,6 +12,30 @@ docker compose up -d --pull never
 
 Keep the project stopped until the script finishes. It checks free space, reads each Compose volume and the deployment configuration into compressed archives, compares each archive against its source, and verifies a SHA-256 manifest. It publishes the backup directory after those checks succeed. The source archive includes the pinned image references. Keep those exact images available in a registry or a separate image export.
 
+## Retrieve the November 24 recovery copy
+
+The private Cloud Storage bucket holds an encrypted tar file. Its passphrase is version 1 of the `snapotter-backup-passphrase` secret in `convertxx`. On a trusted Linux recovery machine with GnuPG and both read permissions, run the following in Bash. The destination must be new and have room for the encrypted file and the extracted archives.
+
+```bash
+set -euo pipefail
+umask 077
+mkdir -m 700 snapotter-recovery-20261124
+cd snapotter-recovery-20261124
+gcloud storage cp --project=convertxx \
+  gs://convertxx-snapotter-recovery-604983748882/recovery-20261124.tar.gpg .
+keyfile=$(mktemp /dev/shm/snapotter-recovery.XXXXXXXX)
+trap 'unlink "$keyfile"' EXIT
+gcloud secrets versions access 1 --project=convertxx \
+  --secret=snapotter-backup-passphrase --out-file="$keyfile"
+gpg --batch --pinentry-mode loopback --passphrase-file "$keyfile" \
+  --decrypt recovery-20261124.tar.gpg | tar -xf -
+sha256sum --check SHA256SUMS
+unlink "$keyfile"
+trap - EXIT
+```
+
+Use the extracted directory as `backup` in the restore procedure below. The archives include credentials and private TLS keys.
+
 ## Restore into an isolated Compose project
 
 Use a fresh directory and Compose project name on a Linux Docker host with the matching local images available. Run these commands as root to preserve file owners and permissions. Restore into new volumes so the existing project stays intact.
@@ -64,4 +88,4 @@ Add a version to the `snapotter-openai-key` secret in the `convertxx` project. T
 deploy/convert/refresh-openai-key.sh -i ~/.ssh/snapotter-convertxx-deploy snapdeploy@convert.henesys.shop
 ```
 
-The helper reads the latest secret version, replaces the root-owned file and recreates the application container. The production key needs access to `POST /v1/audio/transcriptions` for `gpt-transcribe` and `whisper-1`.
+The helper reads the latest secret version, replaces the root-owned file and recreates the application container. The production key needs access to `POST /v1/audio/transcriptions` for `gpt-transcribe`. For subtitles, SnapOtter detects pauses in the local audio and requests a transcript for each clip of up to eight seconds. Each cue uses the clip's position on the original audio timeline. Background noise can make pause detection less precise, and continuous speech is split near low-energy points.

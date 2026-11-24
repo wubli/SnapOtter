@@ -12,7 +12,9 @@ To make billable requests, inject a restricted project key into the process envi
 node deploy/convert/evaluate-openai.mjs --live ocr ocr-pdf remove-background erase-object
 ```
 
-The defaults are GPT‑5.4 mini for Responses and GPT Image 2.5 Flare for Images. Set `OPENAI_EVAL_VISION_MODEL` or `OPENAI_EVAL_IMAGE_MODEL` to compare documented models or pin a snapshot. Image edits may require organization verification. Prices depend on token counts and output size. [Responses model and pricing](https://developers.openai.com/api/docs/models/gpt-5.4-mini) · [Image model and pricing](https://developers.openai.com/api/docs/models/gpt-image-2.5-flare) · [Image edit API constraints](https://developers.openai.com/api/reference/resources/images/methods/edit)
+The defaults are GPT‑6.2 Sol at low reasoning effort for Responses and GPT Image 2.6 Sunburst at medium rendering quality for Images. Sol accepts text and image input and costs $2 per million input tokens and $10 per million output tokens at Standard short-context rates. Astra costs $8 per million input tokens and $40 per million output tokens in the same tier. The lower-effort Sol request suits the bounded transcription probe. Sunburst targets detailed edits and has the same published token rates as the faster Flare model: $5 per million text input tokens, $8 per million image input tokens and $30 per million image output tokens. The script includes reported usage on successful requests. [Model selection](https://developers.openai.com/api/docs/guides/model-selection) · [GPT‑6.2 Sol](https://developers.openai.com/api/docs/models/gpt-6.2-sol) · [GPT Image 2.6 Sunburst](https://developers.openai.com/api/docs/models/gpt-image-2.6-sunburst) · [GPT Image 2.6 Flare](https://developers.openai.com/api/docs/models/gpt-image-2.6-flare)
+
+Set `OPENAI_EVAL_VISION_MODEL` or `OPENAI_EVAL_IMAGE_MODEL` to compare documented models or pin a snapshot. Image edits may require organization verification. [Image edit API constraints](https://developers.openai.com/api/reference/resources/images/methods/edit)
 
 Each case probes a representative capability. A passing probe gives evidence for that input alone. All supported input types, setting values, adversarial and low-quality inputs, cancellation, size limits, output schemas, and fallback behavior would need validation before changing production availability.
 
@@ -38,7 +40,33 @@ Each case probes a representative capability. A passing probe gives evidence for
 
 Mask-guided image edits are generative. The harness checks protected regions because an edit that changes the subject or original pixels can violate the tool's contract even when the output looks plausible. Vision models can misread text, especially small text or non-Latin scripts. [OpenAI vision limitations](https://developers.openai.com/api/docs/guides/images-vision#limitations)
 
-## Live results, 24 November 2026
+## Current live results, 24 November 2026
+
+The full run made 3 Responses requests with GPT‑6.2 Sol at low reasoning effort and 15 image edit requests with GPT Image 2.6 Sunburst at medium quality and its default complexity. GPT‑6.2 Sol matched all six multilingual invoice lines exactly and returned the expected blank-image marker. It recovered the selected PDF scan and omitted the unselected text, but the blank PDF page did not match the expected marker. This narrow result does not establish parity with either native Fast OCR tool. Both continue to process files locally.
+
+Fourteen edits returned PNGs at the requested dimensions. All fourteen failed at least one content check. The animated request failed API validation. The results do not support enabling any of the fifteen image replacements.
+
+| Tool | Observed result |
+| --- | --- |
+| Remove Background | The corner became transparent and pixels in the retained subject changed. |
+| Remove GIF Background | The edit endpoint returned HTTP 400 with code `invalid_value` for the animated request. |
+| Background Replace | The green differed from the requested hex and the subject changed. |
+| Blur Background | The sampled background edge and protected subject both changed. |
+| Object Eraser | The fill differed from the adjacent blue and both unmasked samples changed. |
+| AI Canvas Expand | The new strip was filled and pixels in the original area changed. |
+| AI Colorization | The subject gained color and both its luminance and the lettering changed. |
+| Image Upscaling | Both dimensions doubled. Downsampling revealed a difference in the lettering sample. |
+| Face Enhancement | The portrait and protected surrounding lettering both changed. |
+| Noise Removal | Measured noise fell and the protected lettering changed. |
+| Red Eye Removal | The pupil became neutral. Nearby facial pixels and the lettering changed. |
+| Photo Restoration | The scratch sample and unrelated lettering changed. |
+| PNG Transparency Fixer | The corner became transparent and the retained subject changed. |
+| Passport Photo | The requested dimensions were correct. The sampled background and eye-color landmark differed. |
+| Blur Faces & PII | The face and text samples changed along with the unrelated protected object. |
+
+Successful calls recorded 2,628 Responses input tokens, including 1,807 cache-write tokens, and 78 Responses output tokens. The image calls recorded 614 text input tokens, 14,336 image input tokens, and 21,055 image output tokens. These counts imply approximately $0.76 at the published Standard pricing, excluding taxes and any adjustments. [OpenAI API pricing](https://developers.openai.com/api/docs/pricing)
+
+## Earlier live results, 24 November 2026
 
 GPT-5.4 mini matched five of six multilingual invoice lines exactly and returned an empty result for the blank image. The PDF probe recovered the selected scanned page, recognized the blank page, and omitted the unselected text. Fast OCR runs locally with Tesseract, which also avoids sending entire documents to an external provider.
 

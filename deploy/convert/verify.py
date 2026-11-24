@@ -12,6 +12,7 @@ import sys
 import tempfile
 import time
 import uuid
+import wave
 import zlib
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -171,29 +172,92 @@ def make_ocr_pdf(path):
     path.write_bytes(pdf)
 
 
+SPEECH_FIXTURES = (
+    ("The blue bird sings by the river.", {"blue", "bird", "river"}),
+    ("The yellow train arrives at noon.", {"yellow", "train", "noon"}),
+)
+
+
 def make_speech(directory):
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
-        raise RuntimeError("--ai requires FFmpeg. Install a build with libflite or install eSpeak.")
-    wave = directory / "speech.wav"
-    video = directory / "speech.mp4"
-    phrase = "The blue bird sings by the river. The blue bird sings by the river."
+        raise RuntimeError("--ai requires FFmpeg with libflite, or FFmpeg and eSpeak.")
     espeak = shutil.which("espeak-ng") or shutil.which("espeak")
-    if espeak:
-        subprocess.run([espeak, "-v", "en-us", "-s", "135", "-w", str(wave), phrase], check=True)
-    else:
-        subprocess.run(
-            [ffmpeg, "-v", "error", "-f", "lavfi", "-i", f"flite=text={phrase}:voice=slt", str(wave)],
-            check=True,
-        )
+    sample_rate = 16_000
+    audio = directory / "speech.wav"
+    video = directory / "speech.mp4"
+    windows = []
+    pcm = bytearray(b"\0" * (sample_rate * 2 * 2 // 5))  # 0.4 seconds of lead-in.
+    for index, (sentence, _) in enumerate(SPEECH_FIXTURES):
+        source = directory / f"voice-{index}.wav"
+        if espeak:
+            subprocess.run([espeak, "-v", "en-us", "-s", "135", "-w", str(source), sentence], check=True)
+            speech = subprocess.check_output([
+                ffmpeg, "-v", "error", "-i", str(source), "-ac", "1", "-ar", str(sample_rate),
+                "-f", "s16le", "-",
+            ])
+        else:
+            speech = subprocess.check_output([
+                ffmpeg, "-v", "error", "-f", "lavfi", "-i", f"flite=text={sentence}:voice=slt",
+                "-ac", "1", "-ar", str(sample_rate), "-f", "s16le", "-",
+            ])
+        if index:
+            pcm.extend(b"\0" * (sample_rate * 2 * 3))  # Three seconds between phrases.
+        start = len(pcm) / (sample_rate * 2)
+        pcm.extend(speech)
+        windows.append((start, len(pcm) / (sample_rate * 2)))
+
+    pcm.extend(b"\0" * (sample_rate * 2 * 2 // 5))
+    with wave.open(str(audio), "wb") as wav:
+        wav.setparams((1, 2, sample_rate, 0, "NONE", "not compressed"))
+        wav.writeframes(pcm)
+
     subprocess.run(
         [
             ffmpeg, "-v", "error", "-f", "lavfi", "-i", "color=c=blue:s=160x120:r=12",
-            "-i", str(wave), "-c:v", "mpeg4", "-c:a", "aac", "-shortest", str(video),
+            "-i", str(audio), "-c:v", "mpeg4", "-c:a", "aac", "-shortest", str(video),
         ],
         check=True,
     )
-    return wave, video
+    return audio, video, windows
+
+
+def includes_words(text, expected):
+    words = set(re.findall(r"[a-z]+", text.lower().replace("bluebird", "blue bird")))
+    return len(words & expected) >= 2
+
+
+def subtitle_timing(data, format_name, windows):
+    blocks = re.split(r"\n\s*\n", data.decode("utf-8").strip().replace("\r\n", "\n"))
+    if format_name == "vtt" and blocks.pop(0) != "WEBVTT":
+        return False
+    if len(blocks) != len(windows):
+        return False
+
+    separator = r"\." if format_name == "vtt" else ","
+    timecode = rf"(\d{{2}}):(\d{{2}}):(\d{{2}}){separator}(\d{{3}})"
+
+    def seconds(fields):
+        hour, minute, second, millisecond = map(int, fields)
+        return hour * 3600 + minute * 60 + second + millisecond / 1000
+
+    previous_end = 0
+    for index, (block, (speech_start, speech_end)) in enumerate(zip(blocks, windows), start=1):
+        lines = block.splitlines()
+        if format_name == "srt" and lines.pop(0) != str(index):
+            return False
+        if len(lines) < 2 or not includes_words(" ".join(lines[1:]), SPEECH_FIXTURES[index - 1][1]):
+            return False
+        match = re.fullmatch(rf"{timecode} --> {timecode}", lines[0])
+        if not match:
+            return False
+        start, end = seconds(match.groups()[:4]), seconds(match.groups()[4:])
+        if not previous_end <= start < end:
+            return False
+        if abs(start - speech_start) > 1 or abs(end - speech_end) > 1:
+            return False
+        previous_end = end
+    return True
 
 
 def verify_tools(site, directory, ai, timeout, output_dir):
@@ -232,22 +296,22 @@ def verify_tools(site, directory, ai, timeout, output_dir):
     )
 
     if ai:
-        def includes_speech(data):
-            transcript = data.decode("utf-8").lower().replace("bluebird", "blue bird")
-            words = set(re.findall(r"[a-z]+", transcript))
-            return len(words & {"blue", "bird", "river"}) >= 2
-
-        wave, video = make_speech(directory)
+        audio, video, windows = make_speech(directory)
         check_tool(
-            "/api/v1/tools/audio/transcribe-audio", wave, "audio/wav",
+            "/api/v1/tools/audio/transcribe-audio", audio, "audio/wav",
             {"language": "en", "outputFormat": "txt"}, "speech.txt",
-            lambda mime, data: mime == "text/plain" and includes_speech(data),
+            lambda mime, data: mime == "text/plain"
+            and all(includes_words(data.decode("utf-8"), words) for _, words in SPEECH_FIXTURES),
         )
         check_tool(
             "/api/v1/tools/video/auto-subtitles", video, "video/mp4",
             {"language": "en", "format": "srt"}, "speech.srt",
-            lambda mime, data: mime == "application/x-subrip" and includes_speech(data)
-            and re.search(rb"\d\d:\d\d:\d\d,\d{3} --> \d\d:\d\d:\d\d,\d{3}", data),
+            lambda mime, data: mime == "application/x-subrip" and subtitle_timing(data, "srt", windows),
+        )
+        check_tool(
+            "/api/v1/tools/audio/transcribe-audio", audio, "audio/wav",
+            {"language": "en", "outputFormat": "vtt"}, "speech.vtt",
+            lambda mime, data: mime == "text/vtt" and subtitle_timing(data, "vtt", windows),
         )
 
     if output_dir:
@@ -263,7 +327,7 @@ def main():
     parser.add_argument("--password-file", type=Path, help="Read the login password from this file")
     parser.add_argument("--change-password", action="store_true", help="Prompt to rotate the bootstrap password if required")
     ai = parser.add_mutually_exclusive_group()
-    ai.add_argument("--ai", action="store_true", help="Run two paid transcription checks using the server's key")
+    ai.add_argument("--ai", action="store_true", help="Run three paid transcription checks using the server's key")
     ai.add_argument("--skip-ai", dest="ai", action="store_false", help="Run without paid tools (default)")
     parser.set_defaults(ai=False)
     parser.add_argument("--job-timeout", type=int, default=180, help="Seconds to wait for each queued job")

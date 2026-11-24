@@ -8,9 +8,9 @@ const selectedTools = process.argv.slice(2).filter((arg) => arg !== "--live");
 // biome-ignore lint/suspicious/noUndeclaredEnvVars: this opt-in script is run directly with Node.
 const key = process.env.OPENAI_API_KEY?.trim();
 // biome-ignore lint/suspicious/noUndeclaredEnvVars: this opt-in script is run directly with Node.
-const visionModel = process.env.OPENAI_EVAL_VISION_MODEL || "gpt-5.4-mini";
+const visionModel = process.env.OPENAI_EVAL_VISION_MODEL || "gpt-6.2-sol";
 // biome-ignore lint/suspicious/noUndeclaredEnvVars: this opt-in script is run directly with Node.
-const imageModel = process.env.OPENAI_EVAL_IMAGE_MODEL || "gpt-image-2.5-flare";
+const imageModel = process.env.OPENAI_EVAL_IMAGE_MODEL || "gpt-image-2.6-sunburst";
 const canvas = 1024;
 
 const scanLines = [
@@ -175,11 +175,13 @@ const imageCases = {
         exactTiming: JSON.stringify(metadata.delay) === JSON.stringify(original.delay),
         exactLoop: metadata.loop === original.loop,
         transparentCorner: (await pixelAt(output, 10, 10))[3] === 0,
-        secondFramePreserved: await samePixels(
-          await sharp(input, { page: 1 }).png().toBuffer(),
-          await sharp(output, { page: 1 }).png().toBuffer(),
-          { left: 160, top: 440, width: 200, height: 130 },
-        ),
+        secondFramePreserved:
+          (metadata.pages ?? 1) > 1 &&
+          (await samePixels(
+            await sharp(input, { page: 1 }).png().toBuffer(),
+            await sharp(output, { page: 1 }).png().toBuffer(),
+            { left: 160, top: 440, width: 200, height: 130 },
+          )),
       };
     },
   },
@@ -350,6 +352,7 @@ async function recognize(content, instructions) {
   const data = await post("responses", {
     model: visionModel,
     store: false,
+    ...(visionModel.startsWith("gpt-6.2-") && { reasoning: { effort: "low" } }),
     max_output_tokens: 2000,
     input: [{ role: "user", content: [{ type: "input_text", text: instructions }, ...content] }],
   });
@@ -361,7 +364,7 @@ async function recognize(content, instructions) {
   if (data.status !== "completed" || answer == null) {
     throw new Error("OpenAI did not return a complete OCR result");
   }
-  return answer;
+  return { text: answer, usage: data.usage };
 }
 
 function asImage(png) {
@@ -379,19 +382,20 @@ async function evaluateOcr(id) {
       return { endpoint: "responses", requests: 2, fixtureBytes: [invoice.length, blank.length] };
     const prompt =
       "Transcribe only visible text verbatim in reading order. Preserve spelling, punctuation, digits and Unicode. If there is no text, return the literal string [EMPTY].";
-    const result = await recognize([asImage(invoice)], prompt);
-    const blankResult = await recognize([asImage(blank)], prompt);
+    const { text: result, usage: invoiceUsage } = await recognize([asImage(invoice)], prompt);
+    const { text: blankResult, usage: blankUsage } = await recognize([asImage(blank)], prompt);
     return {
       exactText: normalized(result) === normalized(scanLines.join("\n")),
       matchedLines: scanLines.filter((line) => normalized(result).includes(line)).length,
       expectedLines: scanLines.length,
       blankPage: blankResult.trim() === "[EMPTY]",
+      usage: { invoice: invoiceUsage, blank: blankUsage },
     };
   }
 
   const pdf = await mixedPdf();
   if (!live) return { endpoint: "responses", requests: 1, fixtureBytes: pdf.length };
-  const result = await recognize(
+  const { text: result, usage } = await recognize(
     [
       {
         type: "input_file",
@@ -405,6 +409,7 @@ async function evaluateOcr(id) {
     scannedPage: normalized(result).includes("2: Page two: scanned text 7614"),
     blankPage: normalized(result).includes("3: [EMPTY]"),
     unselectedTextOmitted: !result.includes("5729"),
+    usage,
   };
 }
 
@@ -477,6 +482,7 @@ async function evaluateImage(options) {
     height: metadata.pageHeight ?? metadata.height,
     exactDimensions: dimensions,
     exactFormat: metadata.format === format,
+    usage: result.usage,
     ...(dimensions && (await options.check(input, output, metadata))),
   };
 }
