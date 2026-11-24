@@ -1,7 +1,11 @@
 import type { OcrRuntimeCapability } from "@snapotter/ai";
 import { OCR_FAST_UNSUPPORTED_LANGUAGES } from "@snapotter/shared";
 import { describe, expect, it, vi } from "vitest";
-import { resolveOcrIngressSettings } from "../../../apps/api/src/lib/ocr-capability.js";
+import { env } from "../../../apps/api/src/config.js";
+import {
+  resolveOcrIngressSettings,
+  resolveOcrWorkerQuality,
+} from "../../../apps/api/src/lib/ocr-capability.js";
 
 const missingCapability: OcrRuntimeCapability = {
   available: false,
@@ -383,5 +387,45 @@ describe("resolveOcrIngressSettings", () => {
       reason: "quality-not-supported",
       requestedQuality: "best",
     });
+  });
+});
+
+describe("OpenAI deployment native OCR", () => {
+  it.each(["ocr", "ocr-pdf"])("uses Fast without checking Accurate runtime for %s", (toolId) => {
+    const provider = env.AI_PROVIDER;
+    env.AI_PROVIDER = "openai";
+    try {
+      const readCapability = vi.fn(() => readyCapability(["balanced", "best"]));
+      expect(resolveOcrIngressSettings(toolId, { language: "en" }, { readCapability })).toEqual({
+        ok: true,
+        settings: { language: "en", quality: "fast" },
+      });
+      for (const settings of [{ quality: "best" }, { engine: "paddleocr" }]) {
+        expect(resolveOcrIngressSettings(toolId, settings, { readCapability })).toMatchObject({
+          ok: false,
+          code: "FEATURE_INCOMPATIBLE",
+          reason: "native-fast-only",
+        });
+      }
+      expect(
+        resolveOcrIngressSettings(toolId, { language: "ko" }, { readCapability }),
+      ).toMatchObject({ ok: false, reason: "fast-korean-unsupported", requestedQuality: "fast" });
+      expect(readCapability).not.toHaveBeenCalled();
+    } finally {
+      env.AI_PROVIDER = provider;
+    }
+  });
+
+  it("protects the worker against old jobs requesting the Accurate runtime", () => {
+    const provider = env.AI_PROVIDER;
+    env.AI_PROVIDER = "openai";
+    try {
+      expect(resolveOcrWorkerQuality({})).toBe("fast");
+      expect(resolveOcrWorkerQuality({ engine: "tesseract" })).toBe("fast");
+      expect(() => resolveOcrWorkerQuality({ quality: "best" })).toThrow(/only Fast OCR/);
+      expect(() => resolveOcrWorkerQuality({ engine: "paddleocr" })).toThrow(/only Fast OCR/);
+    } finally {
+      env.AI_PROVIDER = provider;
+    }
   });
 });

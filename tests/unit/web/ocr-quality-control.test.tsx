@@ -22,6 +22,7 @@ import { OcrQualityControl, useOcrQuality } from "@/components/tools/ocr-quality
 import { I18nProvider } from "@/contexts/i18n-context";
 import { format } from "@/lib/format";
 import { useFeaturesStore } from "@/stores/features-store";
+import { useSettingsStore } from "@/stores/settings-store";
 
 function ocrBundle(overrides: Partial<FeatureBundleState> = {}): FeatureBundleState {
   return {
@@ -63,6 +64,7 @@ function Harness({ initialLanguage = "auto" }: { initialLanguage?: string }) {
 
 beforeEach(() => {
   storage.clear();
+  useSettingsStore.setState({ aiProvider: "local" });
   useAuth.mockReturnValue({ hasPermission: () => true });
   useFeaturesStore.setState({
     bundles: [ocrBundle()],
@@ -83,6 +85,22 @@ afterEach(() => {
 });
 
 describe("OCR optional accurate pack control", () => {
+  it("shows only Fast in an OpenAI deployment, even with an installed Accurate pack", () => {
+    useSettingsStore.setState({ aiProvider: "openai" });
+    useFeaturesStore.setState({
+      bundles: [
+        ocrBundle({ status: "installed", availableQualities: ["fast", "balanced", "best"] }),
+      ],
+    });
+
+    render(<Harness />);
+    expect(screen.getByTestId("quality")).toHaveTextContent("fast");
+    expect(screen.getByTestId("can-run")).toHaveTextContent("true");
+    expect(screen.queryByRole("button", { name: "Balanced" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Best" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Enable OCR/ })).toBeNull();
+  });
+
   it("defaults to runnable Fast and offers an exact-size install for an accurate tier", () => {
     const installBundle = vi.fn();
     useFeaturesStore.setState({ installBundle });
