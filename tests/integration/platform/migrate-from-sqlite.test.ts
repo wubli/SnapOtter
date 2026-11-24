@@ -1315,12 +1315,13 @@ describe("migrate-from-sqlite (a dropped row under force)", () => {
           ('m-oidc', 'm-oidc', NULL, 'user', 'default-team-00000000', false, 'oidc', 'm-sub-2', '2025-01-01T00:00:00Z', '2025-01-01T00:00:00Z'),
           ('m-collided', 'm-collided', 'hash', 'user', 'default-team-00000000', false, 'local', 'm-sub-2', '2025-01-01T00:01:00Z', '2025-01-01T00:01:00Z')
       `);
-      // Drop 0011 (and any later migrations) from __drizzle_migrations as
-      // privileged user and re-run runMigrations() so 0011 replays.
+      // Rewind the fixture's schema and journal together before replaying
+      // 0011 onward. Migration 0014 added this column to the current schema.
       await withPrivileged(async (client) => {
-        await client.query(
-          "DELETE FROM drizzle.__drizzle_migrations WHERE created_at >= 1791900000000",
-        );
+        await client.query(`
+          ALTER TABLE users DROP COLUMN google_wake_approved;
+          DELETE FROM drizzle.__drizzle_migrations WHERE created_at >= 1791900000000;
+        `);
       });
       await runMigrations();
 
