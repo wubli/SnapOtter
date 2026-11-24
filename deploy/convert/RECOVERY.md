@@ -55,3 +55,13 @@ done <<< "$volume_list"
 ```
 
 PostgreSQL and Redis have no published ports. The database query and Redis ping verify that both restored services can read their state. Start Caddy and SnapOtter only when the restore should serve traffic and ports 80 and 443 are available. To resume an interrupted restore, use another fresh project name and directory.
+
+## Rotate the OpenAI key
+
+Add a version to the `snapotter-openai-key` secret in the `convertxx` project. The VM reads a protected file when the application container starts. Run the following helper from an operator machine with access to the secret and SSH access to the VM. Pass the same SSH identity options and destination used for deployment. Install the matching helper in `/opt/snapotter/` when restoring a new VM.
+
+```bash
+deploy/convert/refresh-openai-key.sh -i ~/.ssh/snapotter-convertxx-deploy snapdeploy@convert.henesys.shop
+```
+
+The helper reads the latest secret version, replaces the root-owned file and recreates the application container. The production key needs access to `POST /v1/audio/transcriptions` for `gpt-transcribe` and `whisper-1`.
