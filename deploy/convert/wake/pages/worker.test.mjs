@@ -94,7 +94,9 @@ async function cookieFor(fixture) {
 
 test("only an authorized browser action can contact the controller", async () => {
   const f = scenario();
-  assert.match(await (await f.request("/", { headers: navigation })).text(), /Team passphrase/);
+  const gate = await f.request("/", { headers: navigation });
+  assert.equal(gate.headers.get("referrer-policy"), "same-origin");
+  assert.match(await gate.text(), /Team passphrase/);
   assert.equal((await f.request("/api/v1/health")).status, 401);
   assert.equal((await f.request("/_wake/status")).status, 401);
   assert.equal((await f.unlock("incorrect")).status, 401);

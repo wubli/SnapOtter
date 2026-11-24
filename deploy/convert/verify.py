@@ -38,6 +38,7 @@ class Site:
                 or self.origin.path or self.origin.query or self.origin.fragment):
             raise ValueError("Supply a site origin without a path, credentials, query, or fragment.")
         self.http = build_opener(HTTPCookieProcessor(CookieJar()), NoRedirect())
+        self.http.addheaders = [("User-Agent", "SnapOtter-Verify/1.0")]
         self.token = None
 
     def request(self, path, data=None, content_type=None, *, method=None, headers=None,

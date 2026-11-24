@@ -197,7 +197,8 @@ function page(content, script = "") {
         "'; script-src 'nonce-" +
         nonce +
         "'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
-      "referrer-policy": "no-referrer",
+      // Preserve Origin on same-site form POSTs so the wake endpoint can verify it.
+      "referrer-policy": "same-origin",
       "x-content-type-options": "nosniff",
       "x-robots-tag": "noindex, nofollow",
     }),
