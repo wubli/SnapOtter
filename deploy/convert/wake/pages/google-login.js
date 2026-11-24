@@ -16,6 +16,13 @@ const base64url = /^[A-Za-z0-9_-]+$/;
 const randomValue = /^[A-Za-z0-9_-]{43}$/;
 const taggedState = /^gw\.[A-Za-z0-9_-]{43}$/;
 
+export class GoogleLoginError extends Error {
+  constructor(code) {
+    super("Google sign-in failed");
+    this.code = code;
+  }
+}
+
 function encode(bytes) {
   return btoa(String.fromCharCode(...bytes))
     .replace(/\+/g, "-")
@@ -24,10 +31,12 @@ function encode(bytes) {
 }
 
 function decode(value) {
-  if (!base64url.test(value)) throw new Error("Invalid encoding");
-  return Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), (byte) =>
-    byte.charCodeAt(0),
-  );
+  if (!base64url.test(value) || value.length % 4 === 1) throw new Error("Invalid encoding");
+  const padded = value
+    .replace(/-/g, "+")
+    .replace(/_/g, "/")
+    .padEnd(Math.ceil(value.length / 4) * 4, "=");
+  return Uint8Array.from(atob(padded), (byte) => byte.charCodeAt(0));
 }
 
 function randomToken() {
@@ -64,7 +73,8 @@ function isGoogleIssuer(value) {
   return value === googleIssuer || value === "accounts.google.com";
 }
 
-async function verifyIdToken(jwt, nonce, clientId, now, fetchImpl, signal) {
+async function verifyIdToken(jwt, nonce, clientId, now, fetchImpl, signal, setStage) {
+  setStage("token-format");
   if (typeof jwt !== "string" || jwt.length > 16384) throw new Error("Invalid ID token");
   const parts = jwt.split(".");
   if (parts.length !== 3) throw new Error("Invalid ID token");
@@ -79,9 +89,10 @@ async function verifyIdToken(jwt, nonce, clientId, now, fetchImpl, signal) {
     throw new Error("Invalid ID token header");
   }
 
+  setStage("key-fetch");
   const response = await fetchImpl(jwksEndpoint, {
     method: "GET",
-    redirect: "error",
+    redirect: "manual",
     signal,
   });
   if (!response.ok) throw new Error("Google keys unavailable");
@@ -90,6 +101,7 @@ async function verifyIdToken(jwt, nonce, clientId, now, fetchImpl, signal) {
     (key) =>
       key.kid === header.kid && key.kty === "RSA" && key.alg === "RS256" && key.use === "sig",
   );
+  setStage("key-unavailable");
   if (keys.length !== 1) throw new Error("Unknown Google key");
   const key = await crypto.subtle.importKey(
     "jwk",
@@ -98,6 +110,7 @@ async function verifyIdToken(jwt, nonce, clientId, now, fetchImpl, signal) {
     false,
     ["verify"],
   );
+  setStage("signature");
   if (
     !(await crypto.subtle.verify(
       "RSASSA-PKCS1-v1_5",
@@ -109,6 +122,7 @@ async function verifyIdToken(jwt, nonce, clientId, now, fetchImpl, signal) {
     throw new Error("Invalid Google signature");
   }
 
+  setStage("claims");
   const claims = JSON.parse(decoder.decode(decode(encodedClaims)));
   const time = Math.floor(now() / 1000);
   if (
@@ -123,7 +137,12 @@ async function verifyIdToken(jwt, nonce, clientId, now, fetchImpl, signal) {
     (claims.nbf !== undefined && (!Number.isSafeInteger(claims.nbf) || claims.nbf > time)) ||
     claims.nonce !== nonce ||
     typeof claims.sub !== "string" ||
-    !/^[!-~]{1,255}$/.test(claims.sub) ||
+    !/^[!-~]{1,255}$/.test(claims.sub)
+  ) {
+    throw new Error("Invalid Google identity");
+  }
+  setStage("email");
+  if (
     claims.email_verified !== true ||
     typeof claims.email !== "string" ||
     claims.email.length > 254 ||
@@ -224,6 +243,7 @@ export function createGoogleLogin(
   }
 
   async function callback(request) {
+    let stage = "callback-input";
     try {
       const url = new URL(request.url);
       const states = url.searchParams.getAll("state");
@@ -243,6 +263,7 @@ export function createGoogleLogin(
         throw new Error("Invalid OAuth callback");
       }
 
+      stage = "state-cookie";
       const rawCookie = stateCookieValue(request);
       if (rawCookie.length > 1024) throw new Error("Invalid state cookie");
       const parts = rawCookie.split(".");
@@ -263,13 +284,16 @@ export function createGoogleLogin(
         !randomValue.test(state.verifier) ||
         typeof state.nonce !== "string" ||
         !randomValue.test(state.nonce) ||
-        !Number.isSafeInteger(state.expires) ||
-        state.expires <= time ||
-        state.expires > time + stateLifetimeSeconds
+        !Number.isSafeInteger(state.expires)
       ) {
         throw new Error("Invalid OAuth state");
       }
+      stage = "state-expired";
+      if (state.expires <= time || state.expires > time + stateLifetimeSeconds) {
+        throw new Error("Expired OAuth state");
+      }
 
+      stage = "token-exchange";
       const signal = AbortSignal.timeout(providerTimeoutMs);
       const response = await fetchImpl(tokenEndpoint, {
         method: "POST",
@@ -282,16 +306,18 @@ export function createGoogleLogin(
           grant_type: "authorization_code",
           redirect_uri: redirectUri,
         }),
-        redirect: "error",
+        redirect: "manual",
         signal,
       });
       if (!response.ok) throw new Error("Google token exchange failed");
       const { id_token: token } = await response.json();
-      return await verifyIdToken(token, state.nonce, clientId, now, fetchImpl, signal);
+      return await verifyIdToken(token, state.nonce, clientId, now, fetchImpl, signal, (value) => {
+        stage = value;
+      });
     } catch {
       // Errors from fetch, token decoding and crypto may carry callback inputs.
       // Keep them out of the caller's response and logs.
-      throw new Error("Google sign-in failed");
+      throw new GoogleLoginError(stage);
     }
   }
 

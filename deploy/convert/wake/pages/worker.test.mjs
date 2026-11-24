@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { GoogleLoginError } from "./google-login.js";
 import { createWorker } from "./public/_worker.js";
 
 const env = {
@@ -80,7 +81,18 @@ function scenario() {
       async callback(request) {
         googleCalls.push("callback");
         const code = new URL(request.url).searchParams.get("code");
-        if (code === "invalid") throw new Error("verification failed");
+        if (code === "invalid") throw new Error("synthetic arbitrary exception with private value");
+        if (
+          [
+            "state-cookie",
+            "state-expired",
+            "token-exchange",
+            "key-fetch",
+            "signature",
+            "email",
+          ].includes(code)
+        )
+          throw new GoogleLoginError(code);
         return {
           sub: "123456",
           email: code === "approved" ? "approved@gmail.com" : "other@gmail.com",
@@ -179,6 +191,35 @@ test("only approved Google callbacks or remembered same-origin wake can contact 
     ).status,
     403,
   );
+});
+
+test("Google failures show only vetted diagnostics and never wake the host", async () => {
+  const f = scenario();
+  const cases = [
+    ["state-cookie", /Allow cookies/],
+    ["state-expired", /attempt expired/],
+    ["token-exchange", /sign-in could not complete/],
+    ["key-fetch", /temporarily unavailable/],
+    ["signature", /could not be verified/],
+    ["email", /approved Gmail or Google Workspace account/],
+    ["denied", /account is not approved/],
+    ["invalid", /sign-in could not complete/],
+  ];
+  for (const [code, help] of cases) {
+    const response = await f.callback(code);
+    assert.equal(response.status, 403);
+    assert.match(response.headers.get("set-cookie"), /^__Host-snapotter-google-state=; Max-Age=0/);
+    const html = await response.text();
+    assert.match(html, help);
+    const expected =
+      code === "denied" ? "address-not-allowed" : code === "invalid" ? "sign-in" : code;
+    assert.ok(html.includes(`<code>${expected}</code>`));
+    assert.doesNotMatch(
+      html,
+      /gw\.fixture|other@gmail\.com|synthetic arbitrary exception with private value/,
+    );
+  }
+  assert.deepEqual(f.calls, []);
 });
 
 test("legacy cookies are cleared and v2 cookies honor expiry, signature and current approval", async () => {

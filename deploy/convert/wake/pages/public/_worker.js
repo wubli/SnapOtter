@@ -1,6 +1,7 @@
 import {
   clearGoogleWakeStateCookie,
   createGoogleLogin,
+  GoogleLoginError,
   googleWakeStateCookieName,
   isGoogleWakeCallback,
 } from "../google-login.js";
@@ -245,16 +246,40 @@ function page(content, script = "", status = 200, cookies = []) {
   return new Response(html, { status, headers });
 }
 
-function googleGate({ denied = false, cookies = [] } = {}) {
-  const help = denied
-    ? "<p>This Google account could not be approved. Sign in with an approved account.</p>"
+const googleLoginFailureCopy = {
+  "callback-input": "Start Google sign-in again from this page.",
+  "state-cookie": "Allow cookies for this site and start Google sign-in again.",
+  "state-expired": "The sign-in attempt expired. Start Google sign-in again.",
+  "token-exchange": "Google sign-in could not complete. Try again or contact the administrator.",
+  "token-format":
+    "The Google response could not be verified. Try again or contact the administrator.",
+  "key-fetch": "Google verification is temporarily unavailable. Try again shortly.",
+  "key-unavailable":
+    "The Google response could not be verified. Try again or contact the administrator.",
+  signature: "The Google response could not be verified. Try again or contact the administrator.",
+  claims: "The Google response could not be verified. Try again or contact the administrator.",
+  email: "Use an approved Gmail or Google Workspace account.",
+  "address-not-allowed": "This Google account is not approved. Choose an approved account.",
+  "sign-in": "Google sign-in could not complete. Try again or contact the administrator.",
+};
+
+function googleFailureReason(error) {
+  return error instanceof GoogleLoginError && Object.hasOwn(googleLoginFailureCopy, error.code)
+    ? error.code
+    : "sign-in";
+}
+
+function googleGate({ reason, cookies = [] } = {}) {
+  const failure = reason && Object.hasOwn(googleLoginFailureCopy, reason);
+  const help = failure
+    ? `<p>${googleLoginFailureCopy[reason]}</p><p>Diagnostic: <code>${reason}</code></p>`
     : "<p>Sign in with an approved Google account to start the service.</p>";
   return page(
     "<h1>Open SnapOtter</h1>" +
       help +
       '<form action="/_wake/google" method="post"><button type="submit">Sign in with Google</button></form>',
     "",
-    denied ? 403 : 200,
+    failure ? 403 : 200,
     cookies,
   );
 }
@@ -430,15 +455,17 @@ function createWorker(fetchUpstream = fetch, now = Date.now, googleLogin = creat
 
       const remembered = await rememberedPrincipal(request, settings, now());
       if (isGoogleWakeCallback(request)) {
+        const clearState = clearGoogleWakeStateCookie();
         let principal;
         try {
           principal = approvedPrincipal(
             await googleLogin(settings, { fetchImpl: fetchUpstream, now }).callback(request),
             settings,
           );
-        } catch {}
-        const clearState = clearGoogleWakeStateCookie();
-        if (!principal) return googleGate({ denied: true, cookies: [clearState] });
+        } catch (error) {
+          return googleGate({ reason: googleFailureReason(error), cookies: [clearState] });
+        }
+        if (!principal) return googleGate({ reason: "address-not-allowed", cookies: [clearState] });
         const headers = noStore({ location: nativeLogin });
         headers.append("set-cookie", clearState);
         headers.append("set-cookie", await newCookie(principal, settings, now()));
@@ -457,8 +484,8 @@ function createWorker(fetchUpstream = fetch, now = Date.now, googleLogin = creat
             status: response.status,
             headers: noStore(response.headers),
           });
-        } catch {
-          return googleGate({ denied: true });
+        } catch (error) {
+          return googleGate({ reason: googleFailureReason(error) });
         }
       }
       if (path === "/_wake") return handleWake(request, settings, remembered);

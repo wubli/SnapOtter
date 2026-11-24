@@ -3,6 +3,7 @@ import { before, test } from "node:test";
 import {
   clearGoogleWakeStateCookie,
   createGoogleLogin,
+  GoogleLoginError,
   googleWakeStateCookieName,
   isGoogleWakeCallback,
 } from "./google-login.js";
@@ -59,10 +60,11 @@ async function fixture({ claims, failAt, invalidSignature = false } = {}) {
     now: () => timestamp,
     fetchImpl: async (url, init) => {
       calls.push({ url, init });
-      assert.equal(init.redirect, "error");
+      assert.equal(init.redirect, "manual");
       assert.ok(init.signal instanceof AbortSignal);
       if (url === tokenEndpoint) {
         if (failAt === "token") return new Response(null, { status: 502 });
+        if (failAt === "token-redirect") return Response.redirect(jwksEndpoint);
         assert.equal(init.method, "POST");
         assert.equal(init.body.get("client_secret"), settings.clientSecret);
         assert.equal(init.body.get("client_id"), settings.clientId);
@@ -98,6 +100,7 @@ async function fixture({ claims, failAt, invalidSignature = false } = {}) {
       }
       if (url === jwksEndpoint) {
         if (failAt === "keys") return new Response(null, { status: 503 });
+        if (failAt === "key-redirect") return Response.redirect(tokenEndpoint);
         return Response.json({ keys: [jwk] });
       }
       throw new Error("Unexpected outbound request");
@@ -202,9 +205,11 @@ test("preserves native callback dispatch and rejects mismatched state before exc
 test("expires state and binds it to the configured OAuth client", async () => {
   const { login, calls, callbackRequest, setTime, deps } = await fixture();
   const otherClient = createGoogleLogin({ ...settings, clientId: "other-client" }, deps);
-  await assert.rejects(otherClient.callback(callbackRequest()), /Google sign-in failed/);
+  await assert.rejects(otherClient.callback(callbackRequest()), {
+    code: "state-cookie",
+  });
   setTime(startTime + 600_000);
-  await assert.rejects(login.callback(callbackRequest()), /Google sign-in failed/);
+  await assert.rejects(login.callback(callbackRequest()), { code: "state-expired" });
   assert.equal(calls.length, 0);
 });
 
@@ -239,8 +244,22 @@ test("checks signed identity claims and keeps provider failures out of caller er
     const { login, callbackRequest } = await fixture({ claims });
     await assert.rejects(login.callback(callbackRequest()), /^Error: Google sign-in failed$/);
   }
-  for (const settings of [{ failAt: "token" }, { failAt: "keys" }, { invalidSignature: true }]) {
-    const { login, callbackRequest } = await fixture(settings);
-    await assert.rejects(login.callback(callbackRequest()), /^Error: Google sign-in failed$/);
+  for (const [options, code] of [
+    [{ failAt: "token" }, "token-exchange"],
+    [{ failAt: "token-redirect" }, "token-exchange"],
+    [{ failAt: "keys" }, "key-fetch"],
+    [{ failAt: "key-redirect" }, "key-fetch"],
+    [{ invalidSignature: true }, "signature"],
+  ]) {
+    const { login, callbackRequest, calls } = await fixture(options);
+    await assert.rejects(
+      login.callback(callbackRequest()),
+      (error) =>
+        error instanceof GoogleLoginError &&
+        error.message === "Google sign-in failed" &&
+        error.code === code &&
+        error.cause === undefined,
+    );
+    assert.equal(calls.length, code === "token-exchange" ? 1 : 2);
   }
 });
