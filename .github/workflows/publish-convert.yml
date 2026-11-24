@@ -60,3 +60,37 @@ jobs:
           DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           printf 'SNAPOTTER_IMAGE=%s@%s\n' "$IMAGE" "$DIGEST" >> "$GITHUB_STEP_SUMMARY"
+
+      # Newly created GHCR packages can be private even for a public repository.
+      # In that case transfer the exact built image without a registry token on the VM.
+      - name: Check anonymous image access
+        id: access
+        env:
+          IMAGE: ${{ steps.image.outputs.repository }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/no-registry-credentials"
+          if docker --config "$RUNNER_TEMP/no-registry-credentials" manifest inspect "$IMAGE@$DIGEST" >/dev/null 2>&1; then
+            echo "public=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "public=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Export image for credential-free deployment
+        if: steps.access.outputs.public == 'false'
+        env:
+          IMAGE: ${{ steps.image.outputs.repository }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          docker buildx prune --all --force
+          docker pull "$IMAGE@$DIGEST"
+          docker tag "$IMAGE@$DIGEST" "$IMAGE:sha-$GITHUB_SHA"
+          docker save "$IMAGE:sha-$GITHUB_SHA" | zstd -T0 -1 > "$RUNNER_TEMP/convert-image.tar.zst"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.access.outputs.public == 'false'
+        with:
+          name: convert-image
+          path: ${{ runner.temp }}/convert-image.tar.zst
+          compression-level: 0
+          retention-days: 1
