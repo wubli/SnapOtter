@@ -61,7 +61,7 @@ describe("AnalyticsConsentPrompt (#4910)", () => {
     renderPrompt();
 
     expect(screen.getByRole("dialog")).toHaveTextContent(TITLE);
-    expect(screen.getByText(/Your files are never sent/)).toBeInTheDocument();
+    expect(screen.getByText(/Analytics does not include your files/)).toBeInTheDocument();
     const yes = screen.getByRole("button", { name: "Send" });
     const no = screen.getByRole("button", { name: "Don't send" });
     expect(yes.className).toBe(no.className);
