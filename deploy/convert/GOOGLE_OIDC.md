@@ -65,20 +65,27 @@ the new Web client JSON and run
 
 The overlay disables Google account creation and uses the existing password
 admin for recovery. Keep the original admin account independent of Google.
-Install `approve-google-user.sh` on the VM. From `/opt/snapotter`, run it
-once per approved account before the first Google sign-in. Use the lowercase
-primary Gmail address. The script creates an ordinary user without a local
-password.
+Before publishing the initial wake roster, confirm at least one approved
+Google account can pass the gate so the existing local recovery admin can
+reach `/login`. The database migration preserves prior operator-approved
+accounts, including a previously approved account whose role is now admin.
+For a fresh deployment, use `approve-google-user.sh USERNAME PRIMARY_GOOGLE_EMAIL`
+from `/opt/snapotter` to seed the first approved account. Keep that account
+separate from the local recovery admin.
 
-```bash
-sudo ./approve-google-user.sh convert-user person@gmail.com
-```
+After bootstrap, sign in as an administrator and use **Settings → People** to
+approve Google users. Enter the exact lowercase
+primary Gmail address or a confirmed Google Workspace mailbox. Disable or
+remove a user here to revoke wake access as well as app access.
 
-For a managed Google Workspace mailbox, independently confirm its identity
-and use `--workspace`. Disable the old app account before a Workspace
-mailbox is reassigned. Google can mark a third-party address verified even
-when its ownership has changed, so only enroll Gmail and confirmed
-Google Workspace mailboxes. [Google ID token identity guidance](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token)
+The host publishes these approvals each minute. Allow about two minutes for
+the timer and Pages KV propagation to reflect an add or revocation. To publish
+immediately from the VM, run `sudo /opt/snapotter/sync-wake-roster.py --force`.
+[Wake roster setup](wake/README.md)
+
+Disable the old app account before a Workspace mailbox is reassigned. Google
+can mark a third-party address verified even when its ownership has changed.
+[Google ID token identity guidance](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token)
 
 On first sign-in, SnapOtter links the approved row using the verified email.
 It looks up linked users by Google subject (`sub`) on later sign-ins.
@@ -88,8 +95,8 @@ It looks up linked users by Google subject (`sub`) on later sign-ins.
 At `https://convert.henesys.shop`, use **Sign in with Google** at the wake gate.
 After SnapOtter is ready, complete native Google sign-in with the same account.
 Check that it reaches the intended SnapOtter account. In a separate browser
-session, an account outside the edge allowlist should be denied before it can
-wake the host. Keep the edge allowlist synchronized with the app's approved users.
+session, an account without an active Google approval should be denied before
+it can wake the host.
 
 Check the local admin password separately in an authorized browser by opening
 `/login` directly. If you cannot pass the edge gate during recovery, start the

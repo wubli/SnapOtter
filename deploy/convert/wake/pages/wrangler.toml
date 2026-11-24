@@ -5,3 +5,7 @@ pages_build_output_dir = "./public"
 [vars]
 PUBLIC_ORIGIN = "https://convert.henesys.shop"
 ORIGIN_URL = "https://convert-origin.henesys.shop"
+
+[[kv_namespaces]]
+binding = "GOOGLE_WAKE_USERS"
+id = "db62dd63b1d04c9493ef6b6cc5634d6f"

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import { test } from "node:test";
 import { GoogleLoginError } from "./google-login.js";
 import { createWorker } from "./public/_worker.js";
@@ -12,13 +13,38 @@ const env = {
   WAKE_COOKIE_SECRET: "fixture-signer-secret-thirty-two-bytes",
   WAKE_GOOGLE_CLIENT_ID: "fixture-client.apps.googleusercontent.com",
   WAKE_GOOGLE_CLIENT_SECRET: "fixture-google-client-secret",
-  WAKE_GOOGLE_ALLOWED_EMAILS: "approved@gmail.com, team@workspace.example",
 };
+
+const rosterKey = "approved-users-v1";
+const approvedEmail = "approved@gmail.com";
+const rosterToken = createHmac("sha256", env.ORIGIN_TOKEN.trim())
+  .update("snapotter-google-roster-v1")
+  .digest("hex");
 
 function scenario() {
   let healthy = false;
   let availableAt = 1_800_000_000_000;
   let state = "starting";
+  let snapshot = JSON.stringify({ users: [{ email: approvedEmail, sub: null }] });
+  let kvFailure = false;
+  const puts = [];
+  const environment = {
+    ...env,
+    GOOGLE_WAKE_USERS: {
+      async get(key, options) {
+        assert.equal(key, rosterKey);
+        assert.equal(options.cacheTtl, 30);
+        if (kvFailure) throw new Error("fixture KV failure");
+        return snapshot;
+      },
+      async put(key, value) {
+        assert.equal(key, rosterKey);
+        if (kvFailure) throw new Error("fixture KV failure");
+        puts.push(value);
+        snapshot = value;
+      },
+    },
+  };
   const calls = [];
   const googleCalls = [];
   const callbackPath = "/api/auth/oidc/callback";
@@ -102,16 +128,41 @@ function scenario() {
   );
 
   function request(path, init, overrides) {
-    return worker.fetch(new Request(env.PUBLIC_ORIGIN + path, init), { ...env, ...overrides });
+    return worker.fetch(new Request(env.PUBLIC_ORIGIN + path, init), {
+      ...environment,
+      ...overrides,
+    });
   }
 
   function callback(code = "approved") {
     return request(`${callbackPath}?state=gw.fixture&code=${code}`);
   }
 
+  function publish(body, token = rosterToken, overrides) {
+    return request(
+      "/_wake/roster",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-snapotter-roster-token": token },
+        body,
+        ...(body instanceof ReadableStream && { duplex: "half" }),
+      },
+      overrides,
+    );
+  }
+
   return {
     calls,
     googleCalls,
+    puts,
+    environment,
+    publish,
+    roster(value) {
+      snapshot = value;
+    },
+    failKv() {
+      kvFailure = true;
+    },
     request,
     callback,
     advance(ms) {
@@ -237,20 +288,106 @@ test("legacy cookies are cleared and v2 cookies honor expiry, signature and curr
   const cookie = await cookieFor(f);
   const tampered = cookie.replace(/v2\.[A-Za-z0-9_-]+\./, "v2.e30.");
   assert.equal((await f.request("/", { headers: { cookie: tampered } })).status, 401);
+  f.roster(JSON.stringify({ users: [] }));
   assert.equal(
-    (
-      await f.request(
-        "/_wake",
-        { method: "POST", headers: { ...fromBrowser, cookie } },
-        {
-          WAKE_GOOGLE_ALLOWED_EMAILS: "someone-else@gmail.com",
-        },
-      )
-    ).status,
+    (await f.request("/_wake", { method: "POST", headers: { ...fromBrowser, cookie } })).status,
     401,
   );
+  f.roster(JSON.stringify({ users: [{ email: approvedEmail, sub: null }] }));
   f.advance(7 * 24 * 60 * 60_000);
   assert.equal((await f.request("/", { headers: { cookie } })).status, 401);
+  assert.equal(f.calls.length, 1);
+});
+
+test("authenticated roster publication validates bounds and always writes the snapshot", async () => {
+  const f = scenario();
+  const snapshot = JSON.stringify({ users: [{ email: approvedEmail, sub: null }] });
+  assert.equal((await f.request("/_wake/roster")).status, 405);
+  assert.equal((await f.publish(snapshot, "wrong")).status, 403);
+  assert.equal((await f.publish(snapshot, rosterToken.toUpperCase())).status, 403);
+  assert.equal((await f.publish(snapshot, rosterToken, { ORIGIN_TOKEN: "different" })).status, 403);
+  for (const payload of [
+    "null",
+    JSON.stringify({ users: [{ email: approvedEmail }] }),
+    JSON.stringify({ users: [{ email: "UPPERCASE@gmail.com", sub: null }] }),
+    JSON.stringify({ users: [{ email: approvedEmail, sub: "a space" }] }),
+    JSON.stringify({
+      users: [
+        { email: approvedEmail, sub: null },
+        { email: approvedEmail, sub: "123" },
+      ],
+    }),
+    JSON.stringify({
+      users: Array.from({ length: 513 }, (_, i) => ({ email: `u${i}@example.test`, sub: null })),
+    }),
+  ])
+    assert.equal((await f.publish(payload)).status, 400);
+  const tooLarge = new ReadableStream({
+    start(stream) {
+      stream.enqueue(new Uint8Array(256 * 1024 + 1));
+      stream.close();
+    },
+  });
+  assert.equal((await f.publish(tooLarge)).status, 413);
+  assert.deepEqual(f.puts, []);
+  for (let i = 0; i < 2; i++) {
+    const response = await f.publish(snapshot, rosterToken, {
+      ORIGIN_TOKEN: ` ${env.ORIGIN_TOKEN}\n`,
+    });
+    assert.equal(response.status, 204);
+    assert.equal(await response.text(), "");
+    assert.match(response.headers.get("cache-control"), /no-store/);
+  }
+  assert.deepEqual(f.puts, [snapshot, snapshot]);
+  assert.deepEqual(f.calls, []);
+  f.failKv();
+  assert.equal((await f.publish(snapshot)).status, 503);
+});
+
+test("published subject binding and revocation apply to existing wake cookies", async () => {
+  const f = scenario();
+  f.healthy(true);
+  const cookie = await cookieFor(f);
+  const current = () => f.request("/_wake/status", { headers: { cookie } });
+  assert.equal((await current()).status, 200);
+  assert.equal(
+    (await f.publish(JSON.stringify({ users: [{ email: approvedEmail, sub: "123456" }] }))).status,
+    204,
+  );
+  assert.equal((await current()).status, 200);
+  assert.equal(
+    (await f.publish(JSON.stringify({ users: [{ email: approvedEmail, sub: "wrong-subject" }] })))
+      .status,
+    204,
+  );
+  assert.equal((await current()).status, 401);
+  assert.equal((await f.callback()).status, 403);
+  assert.equal((await f.publish(JSON.stringify({ users: [] }))).status, 204);
+  assert.equal(
+    (await f.request("/_wake", { method: "POST", headers: { ...fromBrowser, cookie } })).status,
+    401,
+  );
+  assert.equal(f.calls.filter(({ url }) => url.endsWith("/wake")).length, 0);
+});
+
+test("missing, malformed or unavailable roster fails closed", async () => {
+  const f = scenario();
+  f.healthy(true);
+  const cookie = await cookieFor(f);
+  const wake = (overrides) =>
+    f.request("/_wake", { method: "POST", headers: { ...fromBrowser, cookie } }, overrides);
+  assert.equal((await wake({ GOOGLE_WAKE_USERS: undefined })).status, 503);
+  for (const snapshot of [null, "malformed"]) {
+    f.roster(snapshot);
+    assert.deepEqual(await (await wake()).json(), { state: "roster-unavailable" });
+    const callback = await f.callback();
+    assert.equal(callback.status, 503);
+    assert.match(await callback.text(), /roster-unavailable/);
+    assert.equal(callback.headers.getSetCookie().length, 1);
+  }
+  f.failKv();
+  const response = await wake();
+  assert.equal(response.status, 503);
   assert.equal(f.calls.length, 1);
 });
 
@@ -365,6 +502,7 @@ test("fresh readiness gates a write and forwards its body only once as a stream"
       authorization: "Bearer app-token",
       cookie: `app-token=keep; ${cookie}`,
       "x-snapotter-origin-token": "attacker",
+      "x-snapotter-roster-token": "must-not-forward",
       "x-wake-internal": "attacker",
       "x-forwarded-host": "attacker",
     },
@@ -383,15 +521,20 @@ test("fresh readiness gates a write and forwards its body only once as a stream"
       if (url.endsWith("/api/v1/health")) return Response.json({ status: "healthy" });
       f.calls.push({ body: init.body, headers: new Headers(init.headers), url });
       return new Response("ok", {
-        headers: { "set-cookie": "app-session=keep", "x-snapotter-origin-token": "hidden" },
+        headers: {
+          "set-cookie": "app-session=keep",
+          "x-snapotter-origin-token": "hidden",
+          "x-snapotter-roster-token": "hidden",
+        },
       });
     },
     () => 1_800_000_000_000,
   );
-  const response = await worker.fetch(request, env);
+  const response = await worker.fetch(request, f.environment);
   assert.equal(await response.text(), "ok");
   assert.equal(response.headers.get("set-cookie"), "app-session=keep");
   assert.equal(response.headers.get("x-snapotter-origin-token"), null);
+  assert.equal(response.headers.get("x-snapotter-roster-token"), null);
   assert.match(response.headers.get("cache-control"), /no-store/);
   const uploads = f.calls.filter(({ url }) => url.endsWith("/api/upload"));
   assert.equal(uploads.length, 1);
@@ -400,6 +543,7 @@ test("fresh readiness gates a write and forwards its body only once as a stream"
   assert.equal(uploads[0].headers.get("authorization"), "Bearer app-token");
   assert.equal(uploads[0].headers.get("x-snapotter-origin-token"), env.ORIGIN_TOKEN);
   assert.equal(uploads[0].headers.get("x-wake-internal"), null);
+  assert.equal(uploads[0].headers.get("x-snapotter-roster-token"), null);
   assert.equal(uploads[0].headers.get("x-forwarded-host"), "convert.example.test");
 });
 

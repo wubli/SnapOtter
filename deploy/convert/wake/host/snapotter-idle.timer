@@ -2,7 +2,7 @@
 Description=Check SnapOtter for idle shutdown
 
 [Timer]
-OnBootSec=16min
+OnBootSec=60s
 OnUnitInactiveSec=60s
 AccuracySec=5s
 Unit=snapotter-idle.service

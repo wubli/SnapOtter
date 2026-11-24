@@ -6,5 +6,6 @@ ConditionPathExists=/opt/snapotter/compose.override.yaml
 [Service]
 Type=oneshot
 WorkingDirectory=/opt/snapotter
+Environment=SNAPOTTER_WAKE_ROSTER_SYNC=1
 ExecStart=/opt/snapotter/idle-stop.sh
 TimeoutStartSec=60

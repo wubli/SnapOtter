@@ -23,6 +23,9 @@ config_files=(compose.yaml Caddyfile .env secrets)
 if [[ -f "$deployment_dir/compose.override.yaml" ]]; then
   compose+=(-f "$deployment_dir/compose.override.yaml")
   config_files+=(compose.override.yaml idle-stop.sh)
+  if [[ -f "$deployment_dir/sync-wake-roster.py" ]]; then
+    config_files+=(sync-wake-roster.py)
+  fi
 fi
 if [[ -f "$deployment_dir/compose.google-oidc.yaml" ]]; then
   # Resolve the operator's default Compose stack, including any COMPOSE_FILE

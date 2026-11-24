@@ -27,7 +27,12 @@ if idle_request check; then
   :
 else
   status=$?
-  if (( status == 3 )); then exit 0; fi
+  if (( status == 3 )); then
+    if [[ "${SNAPOTTER_WAKE_ROSTER_SYNC:-}" == 1 ]]; then
+      ./sync-wake-roster.py
+    fi
+    exit 0
+  fi
   # A killed previous oneshot may have left the admission gate held without
   # requesting shutdown. The timer never overlaps its own oneshot.
   if (( status == 4 )); then
@@ -48,5 +53,8 @@ cancel_drain() {
 }
 trap cancel_drain EXIT
 idle_request drain
+if [[ "${SNAPOTTER_WAKE_ROSTER_SYNC:-}" == 1 ]]; then
+  ./sync-wake-roster.py --force
+fi
 systemctl --no-block poweroff
 trap - EXIT
