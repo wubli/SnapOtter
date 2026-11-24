@@ -105,18 +105,70 @@ class Site:
         raise RuntimeError(f"Timed out waiting for job {job_id}.")
 
 
-def make_png(path):
+def write_png(path, width, height, pixels):
     def chunk(kind, payload):
         data = kind + payload
         return struct.pack(">I", len(payload)) + data + struct.pack(">I", zlib.crc32(data))
 
-    row = b"\0" + b"\x20\x80\xe0" * 16
+    stride = width * 3
+    rows = b"".join(b"\0" + pixels[start:start + stride] for start in range(0, len(pixels), stride))
     path.write_bytes(
         b"\x89PNG\r\n\x1a\n"
-        + chunk(b"IHDR", struct.pack(">IIBBBBB", 16, 16, 8, 2, 0, 0, 0))
-        + chunk(b"IDAT", zlib.compress(row * 16))
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(rows))
         + chunk(b"IEND", b"")
     )
+
+
+def make_ocr_png(path):
+    # A scalable 5x7 fixture font for the exact text "TEST OCR".
+    glyphs = {
+        "T": [31, 4, 4, 4, 4, 4, 4],
+        "E": [31, 16, 16, 30, 16, 16, 31],
+        "S": [15, 16, 16, 14, 1, 1, 30],
+        " ": [0] * 7,
+        "O": [14, 17, 17, 17, 17, 17, 14],
+        "C": [14, 17, 16, 16, 16, 17, 14],
+        "R": [30, 17, 17, 30, 20, 18, 17],
+    }
+    scale, margin = 12, 36
+    text = "TEST OCR"
+    width, height = len(text) * 6 * scale + 2 * margin, 7 * scale + 2 * margin
+    pixels = bytearray(b"\xff" * (width * height * 3))
+    for index, char in enumerate(text):
+        for y, row in enumerate(glyphs[char]):
+            for x in range(5):
+                if row & (1 << (4 - x)):
+                    left = margin + (index * 6 + x) * scale
+                    for raster_y in range(margin + y * scale, margin + (y + 1) * scale):
+                        start = (raster_y * width + left) * 3
+                        pixels[start:start + scale * 3] = bytes(scale * 3)
+    write_png(path, width, height, pixels)
+
+
+def make_ocr_pdf(path):
+    def text_stream(text):
+        content = f"BT /F1 32 Tf 52 300 Td ({text}) Tj ET"
+        return f"<< /Length {len(content)} >>\nstream\n{content}\nendstream"
+
+    objects = [
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 540 405] /Resources << /Font << /F1 5 0 R >> >> /Contents 6 0 R >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 540 405] /Resources << /Font << /F1 5 0 R >> >> /Contents 7 0 R >>",
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        text_stream("Omit this page 4930"),
+        text_stream("Native PDF OCR 7614"),
+    ]
+    pdf = bytearray(b"%PDF-1.4\n")
+    offsets = ["0000000000 65535 f \n"]
+    for index, obj in enumerate(objects, start=1):
+        offsets.append(f"{len(pdf):010d} 00000 n \n")
+        pdf.extend(f"{index} 0 obj\n{obj}\nendobj\n".encode("ascii"))
+    xref = len(pdf)
+    pdf.extend(f"xref\n0 {len(offsets)}\n{''.join(offsets)}".encode("ascii"))
+    pdf.extend(f"trailer\n<< /Size {len(offsets)} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode("ascii"))
+    path.write_bytes(pdf)
 
 
 def make_speech(directory):
@@ -155,11 +207,28 @@ def verify_tools(site, directory, ai, timeout, output_dir):
         print(f"{output}: verified {len(content)} downloaded bytes.", flush=True)
 
     image = directory / "conversion.png"
-    make_png(image)
+    write_png(image, 16, 16, b"\x20\x80\xe0" * 256)
     check_tool(
         "/api/v1/tools/image/convert", image, "image/png", {"format": "jpg"}, "conversion.jpg",
         lambda mime, data: mime == "image/jpeg" and data.startswith(b"\xff\xd8\xff")
         and data.endswith(b"\xff\xd9"),
+    )
+
+    ocr_image = directory / "ocr.png"
+    make_ocr_png(ocr_image)
+    check_tool(
+        "/api/v1/tools/image/ocr", ocr_image, "image/png",
+        {"language": "en"}, "ocr-image.txt",
+        lambda mime, data: mime == "text/plain" and b"TEST OCR" in b" ".join(data.upper().split()),
+    )
+
+    ocr_pdf = directory / "ocr.pdf"
+    make_ocr_pdf(ocr_pdf)
+    check_tool(
+        "/api/v1/tools/pdf/ocr-pdf", ocr_pdf, "application/pdf",
+        {"language": "en", "quality": "fast", "pages": "2"}, "ocr-pdf.txt",
+        lambda mime, data: mime == "text/plain" and b"--- Page 2 ---" in data
+        and b"Native PDF OCR 7614" in data and b"4930" not in data,
     )
 
     if ai:

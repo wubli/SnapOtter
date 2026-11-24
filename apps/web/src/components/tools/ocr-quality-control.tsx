@@ -6,10 +6,11 @@ import { useAuth } from "@/hooks/use-auth";
 import { bundleName, featureIncompatibleMessage } from "@/lib/bundle-i18n";
 import { format, formatFileSize } from "@/lib/format";
 import { useFeaturesStore } from "@/stores/features-store";
+import { useSettingsStore } from "@/stores/settings-store";
 
 export type OcrQuality = "fast" | "balanced" | "best";
 
-function requiresAccurateTier(language: string): boolean {
+export function requiresAccurateTier(language: string): boolean {
   return (OCR_FAST_UNSUPPORTED_LANGUAGES as readonly string[]).includes(language);
 }
 
@@ -17,7 +18,9 @@ export function useOcrQuality(language = "auto"): {
   quality: OcrQuality;
   setQuality: (quality: OcrQuality) => void;
   canRun: boolean;
+  fastOnly: boolean;
 } {
+  const fastOnly = useSettingsStore((s) => s.aiProvider === "openai");
   const [selection, setSelection] = useState<{
     language: string;
     quality: OcrQuality;
@@ -52,7 +55,9 @@ export function useOcrQuality(language = "auto"): {
     },
     [accurateOnly, language],
   );
-  return { quality, setQuality, canRun };
+  return fastOnly
+    ? { quality: "fast", setQuality, canRun: !accurateOnly, fastOnly }
+    : { quality, setQuality, canRun, fastOnly };
 }
 
 export function OcrQualityControl({
@@ -65,6 +70,7 @@ export function OcrQualityControl({
   onChange: (quality: OcrQuality) => void;
 }) {
   const { t } = useTranslation();
+  const fastOnly = useSettingsStore((s) => s.aiProvider === "openai");
   const { hasPermission } = useAuth();
   const bundle = useFeaturesStore((state) => state.bundles.find((item) => item.id === "ocr"));
   const installBundle = useFeaturesStore((state) => state.installBundle);
@@ -93,6 +99,10 @@ export function OcrQualityControl({
     { value: "balanced", label: qualityTranslations.qualityBalanced },
     { value: "best", label: qualityTranslations.qualityBest },
   ];
+
+  if (fastOnly) {
+    return <p className="text-sm text-muted-foreground">{qualityTranslations.qualityFast}</p>;
+  }
 
   return (
     <div className="space-y-2">

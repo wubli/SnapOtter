@@ -41,6 +41,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379
       CONCURRENT_JOBS: "1"
       MAX_WORKER_THREADS: "1"
+      OMP_THREAD_LIMIT: "1"
       MAX_UPLOAD_SIZE_MB: "100"
       MAX_BATCH_SIZE: "10"
       MAX_MEGAPIXELS: "40"

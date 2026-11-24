@@ -10,7 +10,13 @@ describe("AI deployment tool policy", () => {
 
   it("keeps native conversions and enables the supported speech tools with a key", () => {
     const disabledTools = resolveDeploymentDisabledTools("openai", true);
-    const remoteOrNativeTools = ["transcribe-audio", "auto-subtitles", "smart-crop"];
+    const remoteOrNativeTools = [
+      "transcribe-audio",
+      "auto-subtitles",
+      "smart-crop",
+      "ocr",
+      "ocr-pdf",
+    ];
     expect(disabledTools).toEqual(
       PYTHON_SIDECAR_TOOLS.filter((id) => !remoteOrNativeTools.includes(id)),
     );

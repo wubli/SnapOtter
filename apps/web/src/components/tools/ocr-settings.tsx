@@ -22,7 +22,12 @@ import { useRunProgress } from "@/lib/run-progress";
 import { copyToClipboard, generateId } from "@/lib/utils";
 import { createXhrWatchdog, type XhrWatchdog } from "@/lib/xhr-watchdog";
 import { useFileStore } from "@/stores/file-store";
-import { type OcrQuality, OcrQualityControl, useOcrQuality } from "./ocr-quality-control";
+import {
+  type OcrQuality,
+  OcrQualityControl,
+  requiresAccurateTier,
+  useOcrQuality,
+} from "./ocr-quality-control";
 
 const LANGUAGE_CODES = ["auto", "en", "de", "fr", "es", "zh", "ja", "ko", "ar"] as const;
 
@@ -374,7 +379,7 @@ export function OcrSettings() {
   const { files, processing, error, setProcessing, setError } = useFileStore();
 
   const [language, setLanguage] = useState("auto");
-  const { quality, setQuality, canRun } = useOcrQuality(language);
+  const { quality, setQuality, canRun, fastOnly } = useOcrQuality(language);
   const [enhance, setEnhance] = useState(false);
   const [enhanceManuallySet, setEnhanceManuallySet] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
@@ -821,11 +826,13 @@ export function OcrSettings() {
             onChange={(e) => setLanguage(e.target.value)}
             className="w-full mt-1.5 px-2 py-1.5 rounded border border-border bg-background text-sm text-foreground"
           >
-            {LANGUAGE_CODES.map((code) => (
-              <option key={code} value={code}>
-                {languageLabel(code)}
-              </option>
-            ))}
+            {LANGUAGE_CODES.filter((code) => !fastOnly || !requiresAccurateTier(code)).map(
+              (code) => (
+                <option key={code} value={code}>
+                  {languageLabel(code)}
+                </option>
+              ),
+            )}
           </select>
         )}
       </div>

@@ -5,7 +5,7 @@ import { useTranslation } from "@/contexts/i18n-context";
 import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { format } from "@/lib/format";
 import { useFileStore } from "@/stores/file-store";
-import { OcrQualityControl, useOcrQuality } from "./ocr-quality-control";
+import { OcrQualityControl, requiresAccurateTier, useOcrQuality } from "./ocr-quality-control";
 
 const LANGUAGE_CODES = ["en", "de", "fr", "es", "zh", "ja", "ko", "ar"] as const;
 
@@ -16,7 +16,7 @@ export function OcrPdfSettings() {
     useToolProcessor("ocr-pdf");
 
   const [language, setLanguage] = useState("auto");
-  const { quality, setQuality, canRun } = useOcrQuality(language);
+  const { quality, setQuality, canRun, fastOnly } = useOcrQuality(language);
   const [pages, setPages] = useState("all");
   const [enhance, setEnhance] = useState(quality === "best");
   const [enhanceManuallySet, setEnhanceManuallySet] = useState(false);
@@ -81,7 +81,7 @@ export function OcrPdfSettings() {
           className="border-border bg-background w-full rounded-md border px-3 py-2 text-sm"
         >
           <option value="auto">{ts.autoDetect}</option>
-          {LANGUAGE_CODES.map((code) => (
+          {LANGUAGE_CODES.filter((code) => !fastOnly || !requiresAccurateTier(code)).map((code) => (
             <option key={code} value={code}>
               {t.commonUi.languageNames[code]}
             </option>

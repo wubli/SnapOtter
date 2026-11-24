@@ -25,7 +25,11 @@ import { asInputErrorIfUndecodable } from "../../lib/image-error.js";
 import { trackClientDisconnect } from "../../lib/ingress-disconnect.js";
 import { multipartFailure } from "../../lib/multipart-parts.js";
 import { deleteObject } from "../../lib/object-storage.js";
-import { ocrRuntimeUnavailable, resolveOcrIngressSettings } from "../../lib/ocr-capability.js";
+import {
+  ocrRuntimeUnavailable,
+  resolveOcrIngressSettings,
+  resolveOcrWorkerQuality,
+} from "../../lib/ocr-capability.js";
 import {
   ocrUploadErrorMessage,
   ocrUploadErrorStatus,
@@ -49,15 +53,6 @@ const settingsSchema = z.object({
 
 type OcrSettings = z.infer<typeof settingsSchema>;
 
-function resolveWorkerQuality(settings: OcrSettings): "fast" | "balanced" | "best" {
-  const quality =
-    settings.quality ??
-    (settings.engine ? (settings.engine === "tesseract" ? "fast" : "balanced") : undefined);
-  if (quality) return quality;
-  const capability = getOcrRuntimeCapability();
-  return capability.available && capability.qualities.includes("best") ? "best" : "fast";
-}
-
 async function processOcrJob(
   input: Buffer,
   settingsValue: unknown,
@@ -69,7 +64,7 @@ async function processOcrJob(
   },
 ) {
   const settings = settingsSchema.parse(settingsValue);
-  const quality = resolveWorkerQuality(settings);
+  const quality = resolveOcrWorkerQuality(settings);
   if (quality !== "fast") {
     const capability = getOcrRuntimeCapability();
     if (!capability.available || !capability.qualities.includes(quality)) {

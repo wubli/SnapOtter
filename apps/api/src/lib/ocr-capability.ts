@@ -5,6 +5,7 @@ import {
   type OcrRuntimeCapability,
   type OcrRuntimeQuality,
 } from "@snapotter/ai";
+import { env } from "../config.js";
 import { InputValidationError } from "../modality/contract.js";
 
 export type OcrIngressQuality = "fast" | OcrRuntimeQuality;
@@ -29,6 +30,8 @@ export type OcrIngressResolution =
       requestedQuality: OcrIngressQuality;
       guidance?: string;
     };
+
+const NATIVE_ONLY_GUIDANCE = "This deployment supports only Fast OCR.";
 
 type CapabilityReader = () => OcrRuntimeCapability;
 
@@ -85,6 +88,18 @@ export function resolveOcrIngressSettings(
 
   let capability: OcrRuntimeCapability | undefined;
   let quality = explicitQuality ?? legacyQuality;
+  if (env.AI_PROVIDER === "openai") {
+    quality ??= "fast";
+    if (quality !== "fast") {
+      return {
+        ok: false,
+        code: "FEATURE_INCOMPATIBLE",
+        reason: "native-fast-only",
+        requestedQuality: quality,
+        guidance: NATIVE_ONLY_GUIDANCE,
+      };
+    }
+  }
   if (!quality) {
     capability = readCapability();
     if (fastUnsupportedReason) {
@@ -114,7 +129,7 @@ export function resolveOcrIngressSettings(
         code: "FEATURE_INCOMPATIBLE",
         reason: FAST_LANGUAGE_REASON_CODES.get(language) ?? "fast-language-unsupported",
         requestedQuality: "fast",
-        guidance: fastUnsupportedReason,
+        guidance: env.AI_PROVIDER === "openai" ? NATIVE_ONLY_GUIDANCE : fastUnsupportedReason,
       };
     }
     return { ok: true, settings: settingsWithQuality };
@@ -156,6 +171,25 @@ export function resolveOcrIngressSettings(
     reason: capability.reason,
     requestedQuality: quality,
   };
+}
+
+/** Resolve legacy or already-persisted jobs without consulting a disabled bundle. */
+export function resolveOcrWorkerQuality(settings: {
+  quality?: OcrIngressQuality;
+  engine?: "tesseract" | "paddleocr";
+}): OcrIngressQuality {
+  const quality =
+    settings.quality ??
+    (settings.engine ? (settings.engine === "tesseract" ? "fast" : "balanced") : undefined);
+  if (env.AI_PROVIDER === "openai") {
+    if (quality && quality !== "fast") {
+      throw new InputValidationError(NATIVE_ONLY_GUIDANCE, 400);
+    }
+    return "fast";
+  }
+  if (quality) return quality;
+  const capability = getOcrRuntimeCapability();
+  return capability.available && capability.qualities.includes("best") ? "best" : "fast";
 }
 
 /**

@@ -37,3 +37,27 @@ Each case probes a representative capability. A passing probe gives evidence for
 | Blur Faces & PII | Face and text regions change while unrelated object pixels remain unchanged | Changes alone do not establish successful redaction. Verify all face and sensitive-text regions are covered and the original content cannot be recovered. |
 
 Mask-guided image edits are generative. The harness checks protected regions because an edit that changes the subject or original pixels can violate the tool's contract even when the output looks plausible. Vision models can misread text, especially small text or non-Latin scripts. [OpenAI vision limitations](https://developers.openai.com/api/docs/guides/images-vision#limitations)
+
+## Live results, 24 November 2026
+
+GPT-5.4 mini matched five of six multilingual invoice lines exactly and returned an empty result for the blank image. The PDF probe recovered the selected scanned page, recognized the blank page, and omitted the unselected text. Fast OCR runs locally with Tesseract, which also avoids sending entire documents to an external provider.
+
+The following results come from one GPT Image 2.5 Flare edit per tool at medium quality. Fourteen requests returned the requested PNG format and dimensions. Each of those failed at least one content check. The animated request received an API validation error. These results informed the decision to disable the fifteen image-edit replacements on this deployment.
+
+| Tool | Observed result |
+| --- | --- |
+| Remove Background | The corner became transparent. Pixels in the retained subject changed. |
+| Remove GIF Background | The API returned HTTP 400 with error code `invalid_value` for the animated request. |
+| Background Replace | Both the specified background color and retained subject differed. |
+| Blur Background | The background edge and the protected subject both changed. |
+| Object Eraser | The expected fill color differed, and pixels outside the mask changed. |
+| AI Canvas Expand | The model filled the extension and changed pixels in the original area. |
+| AI Colorization | The subject gained color, with changes to its luminance and the lettering. |
+| Image Upscaling | The image doubled in each dimension. Downsampling revealed differences in the lettering sample. |
+| Face Enhancement | The portrait and surrounding lettering both changed. |
+| Noise Removal | Measured noise fell. The lettering also changed. |
+| Red Eye Removal | The pupil became neutral. Nearby facial pixels and lettering changed. |
+| Photo Restoration | The scratch sample and unrelated lettering both changed. |
+| PNG Transparency Fixer | The sampled corner remained opaque, and the subject changed. |
+| Passport Photo | The requested size was correct. The background color and eye-color landmark differed. |
+| Blur Faces & PII | The portrait and text regions changed, along with a protected unrelated object. |
