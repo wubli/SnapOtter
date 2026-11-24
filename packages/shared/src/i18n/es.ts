@@ -180,7 +180,7 @@ export const es: TranslationKeys = {
     continueLabel: "Continuar",
     analyticsConsentTitle: "¿Enviar estadísticas de uso anónimas e informes de errores?",
     analyticsConsentBody:
-      "Tus archivos nunca se envían. Puedes cambiarlo más tarde en Configuración.",
+      "Los datos de análisis no incluyen tus archivos. Puedes cambiar esta opción más adelante en Ajustes.",
     analyticsConsentLearnMore: "Ver qué se envía",
     analyticsConsentYes: "Enviar",
     analyticsConsentNo: "No enviar",

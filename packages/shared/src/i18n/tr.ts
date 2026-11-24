@@ -180,7 +180,7 @@ export const tr: TranslationKeys = {
     continueLabel: "Devam et",
     analyticsConsentTitle: "Anonim kullanım istatistikleri ve çökme raporları gönderilsin mi?",
     analyticsConsentBody:
-      "Dosyalarınız asla gönderilmez. Bunu daha sonra Ayarlar'dan değiştirebilirsiniz.",
+      "Analiz verileri dosyalarınızı içermez. Bu seçimi daha sonra Ayarlar’dan değiştirebilirsiniz.",
     analyticsConsentLearnMore: "Neyin gönderildiğini görün",
     analyticsConsentYes: "Gönder",
     analyticsConsentNo: "Gönderme",

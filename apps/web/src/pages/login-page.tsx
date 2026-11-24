@@ -310,6 +310,7 @@ export function LoginPage() {
   const { t } = useTranslation();
   const {
     loading: authLoading = false,
+    aiProvider,
     oidcEnabled,
     oidcProviderName,
     samlEnabled,
@@ -961,6 +962,11 @@ export function LoginPage() {
               )}
             </>
           )}
+          {!authLoading && aiProvider === "openai" && (
+            <p className="text-sm text-muted-foreground lg:hidden">
+              {t.privacyPolicy.openAiTranscription}
+            </p>
+          )}
           <div className="pt-2">
             <LanguageSelector />
           </div>
@@ -970,9 +976,14 @@ export function LoginPage() {
         <div className="max-w-lg space-y-4 text-center">
           <h2 className="text-4xl font-extrabold tracking-tight">{t.auth.heroTitle}</h2>
           <p className="text-lg text-primary-foreground">{t.auth.heroSubtitle}</p>
-          <p className="text-xl font-medium h-8" data-testid="login-rotating-phrase">
-            <RotatingPhrase />
-          </p>
+          {!authLoading && aiProvider === "local" && (
+            <p className="text-xl font-medium h-8" data-testid="login-rotating-phrase">
+              <RotatingPhrase />
+            </p>
+          )}
+          {!authLoading && aiProvider === "openai" && (
+            <p className="text-xl">{t.privacyPolicy.openAiTranscription}</p>
+          )}
         </div>
       </div>
     </main>

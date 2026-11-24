@@ -182,7 +182,7 @@ export const vi: TranslationKeys = {
     continueLabel: "Tiếp tục",
     analyticsConsentTitle: "Gửi thống kê sử dụng ẩn danh và báo cáo sự cố?",
     analyticsConsentBody:
-      "Tệp của bạn không bao giờ được gửi đi. Bạn có thể thay đổi lựa chọn này sau trong Cài đặt.",
+      "Dữ liệu phân tích không bao gồm tệp của bạn. Bạn có thể thay đổi lựa chọn này sau trong phần Cài đặt.",
     analyticsConsentLearnMore: "Xem những gì được gửi",
     analyticsConsentYes: "Gửi",
     analyticsConsentNo: "Không gửi",

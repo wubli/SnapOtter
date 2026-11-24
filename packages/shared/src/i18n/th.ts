@@ -176,7 +176,7 @@ export const th: TranslationKeys = {
     optionalHint: "(ไม่บังคับ)",
     continueLabel: "ดำเนินการต่อ",
     analyticsConsentTitle: "ส่งสถิติการใช้งานแบบไม่ระบุตัวตนและรายงานข้อขัดข้องหรือไม่?",
-    analyticsConsentBody: "ไฟล์ของคุณจะไม่ถูกส่งออกไปเลย คุณเปลี่ยนตัวเลือกนี้ได้ภายหลังในหน้าตั้งค่า",
+    analyticsConsentBody: "ข้อมูลการวิเคราะห์จะไม่รวมไฟล์ของคุณ คุณสามารถเปลี่ยนตัวเลือกนี้ภายหลังได้ในการตั้งค่า",
     analyticsConsentLearnMore: "ดูว่ามีอะไรถูกส่งบ้าง",
     analyticsConsentYes: "ส่ง",
     analyticsConsentNo: "ไม่ส่ง",

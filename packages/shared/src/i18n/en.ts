@@ -175,7 +175,8 @@ export const en = {
     optionalHint: "(optional)",
     continueLabel: "Continue",
     analyticsConsentTitle: "Send anonymous usage stats and crash reports?",
-    analyticsConsentBody: "Your files are never sent. You can change this later in Settings.",
+    analyticsConsentBody:
+      "Analytics does not include your files. You can change this later in Settings.",
     analyticsConsentLearnMore: "See what is sent",
     analyticsConsentYes: "Send",
     analyticsConsentNo: "Don't send",

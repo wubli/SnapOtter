@@ -174,7 +174,7 @@ export const zhCN: TranslationKeys = {
     optionalHint: "(可选)",
     continueLabel: "继续",
     analyticsConsentTitle: "发送匿名使用统计和崩溃报告吗?",
-    analyticsConsentBody: "您的文件永远不会被发送。您之后可以在设置中更改此选项。",
+    analyticsConsentBody: "分析数据不包含您的文件。您可以稍后在设置中更改此选项。",
     analyticsConsentLearnMore: "查看发送哪些内容",
     analyticsConsentYes: "发送",
     analyticsConsentNo: "不发送",

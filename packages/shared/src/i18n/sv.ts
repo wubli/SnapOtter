@@ -180,7 +180,8 @@ export const sv: TranslationKeys = {
     optionalHint: "(valfritt)",
     continueLabel: "Fortsätt",
     analyticsConsentTitle: "Skicka anonym användningsstatistik och kraschrapporter?",
-    analyticsConsentBody: "Dina filer skickas aldrig. Du kan ändra detta senare i Inställningar.",
+    analyticsConsentBody:
+      "Analysdata innehåller inga av dina filer. Du kan ändra valet senare i Inställningar.",
     analyticsConsentLearnMore: "Se vad som skickas",
     analyticsConsentYes: "Skicka",
     analyticsConsentNo: "Skicka inte",

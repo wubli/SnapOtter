@@ -180,7 +180,7 @@ export const uk: TranslationKeys = {
     continueLabel: "Продовжити",
     analyticsConsentTitle: "Надсилати анонімну статистику використання та звіти про збої?",
     analyticsConsentBody:
-      "Ваші файли ніколи не надсилаються. Це можна змінити пізніше в налаштуваннях.",
+      "Дані аналітики не містять ваших файлів. Цей вибір можна змінити пізніше в налаштуваннях.",
     analyticsConsentLearnMore: "Що надсилається",
     analyticsConsentYes: "Надсилати",
     analyticsConsentNo: "Не надсилати",

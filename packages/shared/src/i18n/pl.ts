@@ -179,7 +179,7 @@ export const pl: TranslationKeys = {
     continueLabel: "Dalej",
     analyticsConsentTitle: "Wysyłać anonimowe statystyki użycia i raporty o awariach?",
     analyticsConsentBody:
-      "Twoje pliki nigdy nie są wysyłane. Możesz to później zmienić w Ustawieniach.",
+      "Dane analityczne nie zawierają Twoich plików. Możesz później zmienić tę opcję w ustawieniach.",
     analyticsConsentLearnMore: "Zobacz, co jest wysyłane",
     analyticsConsentYes: "Wysyłaj",
     analyticsConsentNo: "Nie wysyłaj",

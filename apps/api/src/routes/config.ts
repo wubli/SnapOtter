@@ -88,6 +88,7 @@ export async function configRoutes(app: FastifyInstance): Promise<void> {
   app.get("/api/v1/config/auth", async (request) => {
     const config: Record<string, unknown> = {
       authEnabled: env.AUTH_ENABLED,
+      aiProvider: env.AI_PROVIDER,
     };
     if (env.OIDC_ENABLED) {
       config.oidcEnabled = true;

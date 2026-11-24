@@ -103,3 +103,45 @@ describe("useAuth defaultCredentialsActive", () => {
     expect(result.current.defaultCredentialsActive).toBe(false);
   });
 });
+
+describe("login page processing disclosure", () => {
+  it("shows the OpenAI notice and no local-only rotation", async () => {
+    respond({ authEnabled: true, aiProvider: "openai" }, 401);
+    await renderLoginPage();
+
+    const notices = await screen.findAllByText(/send audio to OpenAI for transcription/);
+    expect(notices).toHaveLength(2);
+    expect(screen.queryByTestId("login-rotating-phrase")).not.toBeInTheDocument();
+  });
+
+  it("rotates the local phrases after the server confirms local processing", async () => {
+    respond({ authEnabled: true, aiProvider: "local" }, 401);
+    await renderLoginPage();
+
+    expect(await screen.findByTestId("login-rotating-phrase")).toBeInTheDocument();
+    expect(screen.queryByText(/send audio to OpenAI/)).not.toBeInTheDocument();
+  });
+
+  it("keeps local-only claims hidden while the provider is unknown or its request fails", async () => {
+    let failConfig!: (response: Response) => void;
+    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          failConfig = resolve;
+        }),
+    );
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      await renderLoginPage();
+      expect(screen.queryByTestId("login-rotating-phrase")).not.toBeInTheDocument();
+
+      failConfig(new Response(null, { status: 503 }));
+      await waitFor(() => expect(warn).toHaveBeenCalled());
+      expect(screen.queryByTestId("login-rotating-phrase")).not.toBeInTheDocument();
+      expect(screen.queryByText(/send audio to OpenAI/)).not.toBeInTheDocument();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});

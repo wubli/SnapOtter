@@ -164,6 +164,7 @@ beforeEach(() => {
   });
   vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: () => "blob:otter" }));
   useAuth.mockReturnValue({
+    aiProvider: "local",
     hasPermission: () => true,
     oidcEnabled: false,
     oidcProviderName: null,

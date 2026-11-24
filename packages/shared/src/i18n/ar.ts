@@ -177,7 +177,7 @@ export const ar: TranslationKeys = {
     optionalHint: "(اختياري)",
     continueLabel: "متابعة",
     analyticsConsentTitle: "هل تريد إرسال إحصاءات استخدام مجهولة وتقارير الأعطال؟",
-    analyticsConsentBody: "لا تُرسَل ملفاتك أبدًا. يمكنك تغيير ذلك لاحقًا من الإعدادات.",
+    analyticsConsentBody: "لا تتضمن التحليلات ملفاتك. يمكنك تغيير هذا الخيار لاحقًا من الإعدادات.",
     analyticsConsentLearnMore: "اطّلع على ما يُرسَل",
     analyticsConsentYes: "إرسال",
     analyticsConsentNo: "عدم الإرسال",

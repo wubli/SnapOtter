@@ -179,7 +179,8 @@ export const ko: TranslationKeys = {
     optionalHint: "(선택 사항)",
     continueLabel: "계속",
     analyticsConsentTitle: "익명 사용 통계와 오류 보고서를 보낼까요?",
-    analyticsConsentBody: "파일은 절대 전송되지 않습니다. 나중에 설정에서 변경할 수 있습니다.",
+    analyticsConsentBody:
+      "분석 데이터에는 파일이 포함되지 않습니다. 이 선택은 나중에 설정에서 변경할 수 있습니다.",
     analyticsConsentLearnMore: "전송되는 정보 보기",
     analyticsConsentYes: "보내기",
     analyticsConsentNo: "보내지 않기",

@@ -175,7 +175,7 @@ export const zhTW: TranslationKeys = {
     optionalHint: "(選填)",
     continueLabel: "繼續",
     analyticsConsentTitle: "要傳送匿名使用統計和當機報告嗎?",
-    analyticsConsentBody: "您的檔案永遠不會被傳送。您之後可以在設定中變更此選項。",
+    analyticsConsentBody: "分析資料不包含您的檔案。您可以稍後在設定中變更此選項。",
     analyticsConsentLearnMore: "查看傳送哪些內容",
     analyticsConsentYes: "傳送",
     analyticsConsentNo: "不傳送",

@@ -182,7 +182,7 @@ export const de: TranslationKeys = {
     continueLabel: "Weiter",
     analyticsConsentTitle: "Anonyme Nutzungsstatistiken und Absturzberichte senden?",
     analyticsConsentBody:
-      "Deine Dateien werden nie gesendet. Du kannst das später in den Einstellungen ändern.",
+      "Die Nutzungsanalyse enthält keine Dateien. Du kannst diese Auswahl später in den Einstellungen ändern.",
     analyticsConsentLearnMore: "Was gesendet wird",
     analyticsConsentYes: "Senden",
     analyticsConsentNo: "Nicht senden",

@@ -181,7 +181,7 @@ export const it: TranslationKeys = {
     continueLabel: "Continua",
     analyticsConsentTitle: "Inviare statistiche d'uso anonime e segnalazioni di arresto anomalo?",
     analyticsConsentBody:
-      "I tuoi file non vengono mai inviati. Puoi cambiare idea più tardi nelle Impostazioni.",
+      "I dati di analisi non includono i tuoi file. Puoi modificare questa scelta in seguito nelle Impostazioni.",
     analyticsConsentLearnMore: "Scopri cosa viene inviato",
     analyticsConsentYes: "Invia",
     analyticsConsentNo: "Non inviare",

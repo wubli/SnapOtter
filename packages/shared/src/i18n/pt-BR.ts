@@ -181,7 +181,7 @@ export const ptBR: TranslationKeys = {
     continueLabel: "Continuar",
     analyticsConsentTitle: "Enviar estatísticas de uso anônimas e relatórios de falhas?",
     analyticsConsentBody:
-      "Seus arquivos nunca são enviados. Você pode mudar isso depois em Configurações.",
+      "Os dados de análise não incluem seus arquivos. Você pode mudar essa opção depois nas Configurações.",
     analyticsConsentLearnMore: "Ver o que é enviado",
     analyticsConsentYes: "Enviar",
     analyticsConsentNo: "Não enviar",

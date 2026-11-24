@@ -5,6 +5,7 @@ import { appUrl } from "@/lib/app-url";
 import { useConnectionStore } from "@/stores/connection-store";
 
 interface AuthState {
+  aiProvider?: "local" | "openai";
   loading: boolean;
   authEnabled: boolean;
   isAuthenticated: boolean;
@@ -45,6 +46,7 @@ const ANON_ADMIN_PERMISSIONS: readonly Permission[] = [
 ];
 
 interface AuthConfig {
+  aiProvider?: "local" | "openai";
   authEnabled: boolean;
   oidcEnabled?: boolean;
   oidcProviderName?: string | null;
@@ -125,6 +127,7 @@ export function useAuth() {
         if (!config.authEnabled) {
           if (!cancelled)
             setState({
+              aiProvider: config.aiProvider,
               loading: false,
               authEnabled: false,
               isAuthenticated: true,
@@ -157,6 +160,7 @@ export function useAuth() {
           const mustChange = session.user?.mustChangePassword === true;
           if (!cancelled)
             setState({
+              aiProvider: config.aiProvider,
               loading: false,
               authEnabled: true,
               isAuthenticated: true,
@@ -187,6 +191,7 @@ export function useAuth() {
           }
           if (!cancelled)
             setState({
+              aiProvider: config.aiProvider,
               loading: false,
               authEnabled: true,
               isAuthenticated: false,

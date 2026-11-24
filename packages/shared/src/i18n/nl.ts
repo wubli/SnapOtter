@@ -181,7 +181,7 @@ export const nl: TranslationKeys = {
     continueLabel: "Doorgaan",
     analyticsConsentTitle: "Anonieme gebruiksstatistieken en crashrapporten versturen?",
     analyticsConsentBody:
-      "Je bestanden worden nooit verstuurd. Je kunt dit later wijzigen in Instellingen.",
+      "De analysegegevens bevatten je bestanden niet. Je kunt deze keuze later wijzigen in Instellingen.",
     analyticsConsentLearnMore: "Bekijk wat er wordt verstuurd",
     analyticsConsentYes: "Versturen",
     analyticsConsentNo: "Niet versturen",

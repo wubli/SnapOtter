@@ -177,7 +177,8 @@ export const hi: TranslationKeys = {
     optionalHint: "(वैकल्पिक)",
     continueLabel: "जारी रखें",
     analyticsConsentTitle: "क्या अनाम उपयोग आँकड़े और क्रैश रिपोर्ट भेजें?",
-    analyticsConsentBody: "आपकी फ़ाइलें कभी नहीं भेजी जातीं। आप इसे बाद में सेटिंग्स में बदल सकते हैं।",
+    analyticsConsentBody:
+      "विश्लेषण डेटा में आपकी फ़ाइलें शामिल नहीं होतीं। आप इस विकल्प को बाद में सेटिंग्स में बदल सकते हैं।",
     analyticsConsentLearnMore: "देखें कि क्या भेजा जाता है",
     analyticsConsentYes: "भेजें",
     analyticsConsentNo: "न भेजें",

@@ -180,7 +180,7 @@ export const id: TranslationKeys = {
     continueLabel: "Lanjutkan",
     analyticsConsentTitle: "Kirim statistik penggunaan anonim dan laporan crash?",
     analyticsConsentBody:
-      "File Anda tidak pernah dikirim. Anda dapat mengubahnya nanti di Pengaturan.",
+      "Analitik tidak menyertakan file Anda. Anda dapat mengubah pilihan ini nanti di Pengaturan.",
     analyticsConsentLearnMore: "Lihat apa yang dikirim",
     analyticsConsentYes: "Kirim",
     analyticsConsentNo: "Jangan kirim",

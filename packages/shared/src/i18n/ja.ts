@@ -181,8 +181,7 @@ export const ja: TranslationKeys = {
     optionalHint: "(任意)",
     continueLabel: "続ける",
     analyticsConsentTitle: "匿名の利用統計とクラッシュレポートを送信しますか?",
-    analyticsConsentBody:
-      "ファイルが送信されることはありません。この設定は後から設定画面で変更できます。",
+    analyticsConsentBody: "分析データにはファイルは含まれません。この設定は後から変更できます。",
     analyticsConsentLearnMore: "送信される内容を見る",
     analyticsConsentYes: "送信する",
     analyticsConsentNo: "送信しない",

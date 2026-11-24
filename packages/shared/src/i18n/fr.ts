@@ -183,7 +183,7 @@ export const fr: TranslationKeys = {
     analyticsConsentTitle:
       "Envoyer des statistiques d'utilisation anonymes et des rapports de plantage ?",
     analyticsConsentBody:
-      "Vos fichiers ne sont jamais envoyés. Vous pourrez modifier ce choix plus tard dans les Paramètres.",
+      "Les données d’analyse ne contiennent pas vos fichiers. Vous pourrez modifier ce choix dans les paramètres.",
     analyticsConsentLearnMore: "Voir ce qui est envoyé",
     analyticsConsentYes: "Envoyer",
     analyticsConsentNo: "Ne pas envoyer",

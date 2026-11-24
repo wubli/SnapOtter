@@ -180,7 +180,7 @@ export const ru: TranslationKeys = {
     continueLabel: "Продолжить",
     analyticsConsentTitle: "Отправлять анонимную статистику использования и отчёты о сбоях?",
     analyticsConsentBody:
-      "Ваши файлы никогда не отправляются. Это можно изменить позже в настройках.",
+      "Ваши файлы не входят в данные аналитики. Этот выбор можно изменить позже в настройках.",
     analyticsConsentLearnMore: "Что отправляется",
     analyticsConsentYes: "Отправлять",
     analyticsConsentNo: "Не отправлять",
