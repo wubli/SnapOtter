@@ -51,7 +51,7 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
           build-args: |
             SNAPOTTER_ANALYTICS=off
-            AMD64_RUNTIME_BASE=libheif-base-amd64
+            RUNTIME_SUFFIX=-cpu
           cache-from: type=registry,ref=ghcr.io/snapotter-hq/snapotter:cache-linux-amd64
 
       - name: Show immutable deployment reference

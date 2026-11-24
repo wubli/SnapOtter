@@ -4,8 +4,8 @@
 # Single image: GPU auto-detected on amd64, CPU on arm64
 # ============================================
 
-# CPU-only amd64 builds select the pinned Ubuntu stage used by the native codecs.
-ARG AMD64_RUNTIME_BASE=nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04@sha256:8aef630a54bc5c5146ae5ce68e6af5caa3df0fb690bb91544175c91f307e4356
+# Optional CPU-only runtime for amd64 deployments using a remote AI provider.
+ARG RUNTIME_SUFFIX=
 
 # ============================================
 # Stage 0: Static FFmpeg/FFprobe binaries
@@ -327,7 +327,8 @@ FROM node:22.23.4-bookworm@sha256:18a6d90fd60542269850c80ca03b29b1d9b14d6b221ac7
 # driver gate enforced by nvidia-container-toolkit at container start: a 12.6 base
 # needs driver R560+, vs 12.9 which needs R575+ and fails to start on common
 # production drivers (e.g. 570.x / CUDA 12.8). Keep this at 12.6.x.
-FROM ${AMD64_RUNTIME_BASE} AS base-linux-amd64
+FROM nvidia/cuda:12.6.3-cudnn-runtime-ubuntu24.04@sha256:8aef630a54bc5c5146ae5ce68e6af5caa3df0fb690bb91544175c91f307e4356 AS base-linux-amd64
+FROM ubuntu:24.04@sha256:786a8b558f7be160c6c8c4a54f9a57274f3b4fb1491cf65146521ae77ff1dc54 AS base-linux-amd64-cpu
 
 # Node.js donor: provides Node binaries for the CUDA amd64 image without
 # relying on NodeSource apt repos or Ubuntu mirrors (which are flaky on CI).
@@ -338,7 +339,7 @@ FROM node:22.23.4-bookworm@sha256:18a6d90fd60542269850c80ca03b29b1d9b14d6b221ac7
 # ============================================
 ARG TARGETOS
 ARG TARGETARCH
-FROM base-${TARGETOS}-${TARGETARCH} AS production
+FROM base-${TARGETOS}-${TARGETARCH}${RUNTIME_SUFFIX} AS production
 
 ARG TARGETARCH
 ARG PANDOC_VERSION=3.10
