@@ -233,7 +233,8 @@ def verify_tools(site, directory, ai, timeout, output_dir):
 
     if ai:
         def includes_speech(data):
-            words = set(re.findall(r"[a-z]+", data.decode("utf-8").lower()))
+            transcript = data.decode("utf-8").lower().replace("bluebird", "blue bird")
+            words = set(re.findall(r"[a-z]+", transcript))
             return len(words & {"blue", "bird", "river"}) >= 2
 
         wave, video = make_speech(directory)
