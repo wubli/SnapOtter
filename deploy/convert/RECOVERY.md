@@ -14,14 +14,14 @@ Keep the project stopped until the script finishes. It checks free space, reads 
 
 ## Retrieve a November 24 recovery copy
 
-The private Cloud Storage bucket holds the original `recovery-20261124.tar.gpg` and the wake-enabled `recovery-wake-20261124.tar.gpg`. Both use version 1 of the `snapotter-backup-passphrase` secret in `convertxx`. On a trusted Linux recovery machine with GnuPG and both read permissions, run the following in Bash. The destination must be new and have room for the encrypted file and the extracted archives.
+The private Cloud Storage bucket holds the original `recovery-20261124.tar.gpg`, the wake-enabled `recovery-wake-20261124.tar.gpg`, and `recovery-google-20261124.tar.gpg` with Google sign-in and the approved user. All three use version 1 of the `snapotter-backup-passphrase` secret in `convertxx`. On a trusted Linux recovery machine with GnuPG and both read permissions, run the following in Bash. The destination must be new and have room for the encrypted file and the extracted archives.
 
 ```bash
 set -euo pipefail
 umask 077
 mkdir -m 700 snapotter-recovery-20261124
 cd snapotter-recovery-20261124
-archive=recovery-wake-20261124.tar.gpg
+archive=recovery-google-20261124.tar.gpg
 gcloud storage cp --project=convertxx \
   "gs://convertxx-snapotter-recovery-604983748882/$archive" .
 keyfile=$(mktemp /dev/shm/snapotter-recovery.XXXXXXXX)
