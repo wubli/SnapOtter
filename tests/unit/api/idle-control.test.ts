@@ -14,6 +14,14 @@ import {
 
 const idleWindow = 15 * 60_000;
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((settle) => {
+    resolve = settle;
+  });
+  return { promise, resolve };
+}
+
 function fixture() {
   const admission = new IdleAdmission();
   admission.lastActivity = 1;
@@ -68,7 +76,7 @@ describe("idle drain decisions", () => {
 
   it("does not enqueue new probes while a timed-out backend read is pending", async () => {
     const { controller, snapshot } = fixture();
-    const delayed = Promise.withResolvers<IdleWorkSnapshot>();
+    const delayed = deferred<IdleWorkSnapshot>();
     snapshot.mockReturnValueOnce(delayed.promise);
     vi.useFakeTimers();
     try {
@@ -94,7 +102,7 @@ describe("HTTP admission during idle drain", () => {
     const runTool = vi.fn(async () => ({ ok: true }));
     app.post("/api/v1/tools/example", runTool);
     app.get("/api/v1/health", async () => ({ ok: true }));
-    const checking = Promise.withResolvers<IdleWorkSnapshot>();
+    const checking = deferred<IdleWorkSnapshot>();
     snapshot.mockReturnValueOnce(checking.promise);
     try {
       const drain = controller.command("drain");
@@ -157,8 +165,8 @@ describe("HTTP admission during idle drain", () => {
     const { admission, controller } = fixture();
     const app = Fastify();
     admission.install(app);
-    const work = Promise.withResolvers<void>();
-    const started = Promise.withResolvers<void>();
+    const work = deferred<void>();
+    const started = deferred<void>();
     app.post("/api/v1/upload", async () => {
       started.resolve();
       await work.promise;
@@ -194,7 +202,7 @@ describe("HTTP admission during idle drain", () => {
     });
     const base = await app.listen({ host: "127.0.0.1", port: 0 });
     try {
-      const ended = Promise.withResolvers<void>();
+      const ended = deferred<void>();
       await new Promise<void>((resolve, reject) => {
         get(`${base}/api/v1/jobs/example/progress`, (reply) => {
           reply.once("end", () => ended.resolve());
