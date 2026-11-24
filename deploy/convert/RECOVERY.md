@@ -52,6 +52,9 @@ tar_opts=(--numeric-owner --same-owner --same-permissions --acls --xattrs --xatt
 tar "${tar_opts[@]}" -xzf "$backup/deployment.tar.gz" -C "$restore"
 
 compose=(docker compose --project-name "$project" --project-directory "$restore" -f "$restore/compose.yaml")
+if [[ -f "$restore/compose.override.yaml" ]]; then
+  compose+=(-f "$restore/compose.override.yaml")
+fi
 volume_list=$("${compose[@]}" config --volumes)
 while IFS= read -r key; do
   volume="${project}_${key}"
@@ -85,7 +88,7 @@ PostgreSQL and Redis have no published ports. The database query and Redis ping 
 Add a version to the `snapotter-openai-key` secret in the `convertxx` project. The VM reads a protected file when the application container starts. Run the following helper from an operator machine with access to the secret and SSH access to the VM. Pass the same SSH identity options and destination used for deployment. Install the matching helper in `/opt/snapotter/` when restoring a new VM.
 
 ```bash
-deploy/convert/refresh-openai-key.sh -i ~/.ssh/snapotter-convertxx-deploy snapdeploy@convert.henesys.shop
+deploy/convert/refresh-openai-key.sh -i ~/.ssh/snapotter-convertxx-deploy snapdeploy@34.0.249.154
 ```
 
 The helper reads the latest secret version, replaces the root-owned file and recreates the application container. The production key needs access to `POST /v1/audio/transcriptions` for `gpt-transcribe`. For subtitles, SnapOtter detects pauses in the local audio and requests a transcript for each clip of up to eight seconds. Each cue uses the clip's position on the original audio timeline. Background noise can make pause detection less precise, and continuous speech is split near low-energy points.

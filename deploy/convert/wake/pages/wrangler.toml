@@ -1,0 +1,7 @@
+name = "snapotter-convert-wake"
+compatibility_date = "2026-11-24"
+pages_build_output_dir = "./public"
+
+[vars]
+PUBLIC_ORIGIN = "https://convert.henesys.shop"
+ORIGIN_URL = "https://convert-origin.henesys.shop"

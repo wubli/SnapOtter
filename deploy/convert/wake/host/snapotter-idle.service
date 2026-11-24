@@ -1,0 +1,10 @@
+[Unit]
+Description=Stop the SnapOtter VM after verified inactivity
+After=docker.service
+ConditionPathExists=/opt/snapotter/compose.override.yaml
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/snapotter
+ExecStart=/opt/snapotter/idle-stop.sh
+TimeoutStartSec=60

@@ -1,0 +1,12 @@
+convert-origin.henesys.shop {
+	@edge header X-SnapOtter-Origin-Token {$SNAPOTTER_ORIGIN_TOKEN}
+	handle @edge {
+		encode zstd gzip
+		reverse_proxy snapotter:1349 {
+			header_up -X-SnapOtter-Origin-Token
+			header_up Host convert.henesys.shop
+			header_up X-Forwarded-Host convert.henesys.shop
+		}
+	}
+	respond 403
+}

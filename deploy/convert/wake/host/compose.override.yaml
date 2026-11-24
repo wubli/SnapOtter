@@ -1,0 +1,22 @@
+services:
+  caddy:
+    secrets:
+      - origin_token
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        SNAPOTTER_ORIGIN_TOKEN=$$(cat /run/secrets/origin_token)
+        test -n "$$SNAPOTTER_ORIGIN_TOKEN"
+        export SNAPOTTER_ORIGIN_TOKEN
+        exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+  snapotter:
+    environment:
+      SNAPOTTER_IDLE_TOKEN_FILE: /run/secrets/idle_token
+    secrets:
+      - idle_token
+
+secrets:
+  origin_token:
+    file: ./secrets/origin_token
+  idle_token:
+    file: ./secrets/idle_token

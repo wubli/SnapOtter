@@ -37,6 +37,7 @@ export function createWorkerErrorBackoff(
   worker: PausableWorker,
   pool: Pool,
   backoffMs = WORKER_ERROR_BACKOFF_MS,
+  canResume = () => true,
 ): (err: Error) => void {
   let burstStart = 0;
   let burstCount = 0;
@@ -46,7 +47,7 @@ export function createWorkerErrorBackoff(
     backingOff = false;
     // A worker that is closing must stay down, and one somebody else resumed
     // already needs nothing from us.
-    if (worker.closing || !worker.isPaused()) return;
+    if (worker.closing || !worker.isPaused() || !canResume()) return;
     worker.resume();
   };
 

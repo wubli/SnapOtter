@@ -14,10 +14,11 @@ import time
 import uuid
 import wave
 import zlib
+from http.cookiejar import CookieJar
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urljoin, urlsplit
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from urllib.parse import quote, urlencode, urljoin, urlsplit
+from urllib.request import HTTPCookieProcessor, HTTPRedirectHandler, Request, build_opener
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -36,23 +37,28 @@ class Site:
         if (not self.origin.hostname or self.origin.username or self.origin.password
                 or self.origin.path or self.origin.query or self.origin.fragment):
             raise ValueError("Supply a site origin without a path, credentials, query, or fragment.")
-        self.http = build_opener(NoRedirect())
+        self.http = build_opener(HTTPCookieProcessor(CookieJar()), NoRedirect())
         self.token = None
 
-    def request(self, path, data=None, content_type=None):
+    def request(self, path, data=None, content_type=None, *, method=None, headers=None,
+                accept=(), timeout=30):
         target = urljoin(self.url, path)
         location = urlsplit(target)
         if (location.scheme, location.netloc) != (self.origin.scheme, self.origin.netloc):
             raise ValueError("The server returned a URL outside the site origin.")
-        headers = {}
+        headers = dict(headers or {})
         if self.token:
             headers["Authorization"] = "Bearer " + self.token
         if content_type:
             headers["Content-Type"] = content_type
         try:
-            with self.http.open(Request(target, data=data, headers=headers), timeout=30) as response:
-                return response.status, response.headers.get_content_type(), response.read()
+            request = Request(target, data=data, headers=headers, method=method)
+            with self.http.open(request, timeout=timeout) as response:
+                return response.status, response.headers, response.read()
         except HTTPError as exc:
+            if exc.code in accept:
+                with exc:
+                    return exc.code, exc.headers, exc.read()
             detail = ""
             try:
                 payload = json.loads(exc.read(4096))
@@ -67,6 +73,39 @@ class Site:
         else:
             _, _, body = self.request(path, json.dumps(payload).encode(), "application/json")
         return json.loads(body)
+
+    def wake(self, passphrase, timeout):
+        if not passphrase:
+            raise ValueError("The wake passphrase file is empty.")
+        headers = {"Origin": self.url, "Sec-Fetch-Site": "same-origin"}
+        deadline = time.monotonic() + timeout
+        status, _, _ = self.request(
+            "/_wake", urlencode({"passphrase": passphrase}).encode(),
+            "application/x-www-form-urlencoded", headers=headers, accept=(303,),
+            timeout=min(30, timeout),
+        )
+        if status != 303:
+            raise RuntimeError(f"Wake authorization returned unexpected HTTP {status}.")
+        print("Wake passphrase accepted. Waiting for SnapOtter.", flush=True)
+
+        wake_again = time.monotonic() + 10
+        while (remaining := deadline - time.monotonic()) > 0:
+            status, response_headers, body = self.request(
+                "/_wake/status", accept=(503,), timeout=min(30, remaining),
+            )
+            if status == 200 and json.loads(body).get("state") == "ready":
+                print("Wake gateway reports SnapOtter ready.", flush=True)
+                return
+            delay = retry_delay(response_headers, default=3)
+            remaining = deadline - time.monotonic()
+            if time.monotonic() >= wake_again and remaining > 0:
+                _, wake_headers, _ = self.request(
+                    "/_wake", method="POST", headers=headers,
+                    accept=(503,), timeout=min(30, remaining),
+                )
+                wake_again = time.monotonic() + retry_delay(wake_headers, default=10)
+            time.sleep(max(0, min(delay, deadline - time.monotonic())))
+        raise RuntimeError("Timed out waiting for SnapOtter to wake.")
 
     def login(self, username, password):
         session = self.json("/api/auth/login", {"username": username, "password": password})
@@ -87,10 +126,10 @@ class Site:
         result = json.loads(response)
         if status == 202:
             result = self.wait_for_job(result["jobId"], timeout)
-        _, content_type, content = self.request(result["downloadUrl"])
+        _, headers, content = self.request(result["downloadUrl"])
         if not content or len(content) != result["processedSize"]:
             raise RuntimeError(f"{path}: downloaded result is empty or differs from the reported size.")
-        return content_type, content
+        return headers.get_content_type(), content
 
     def wait_for_job(self, job_id, timeout):
         deadline = time.monotonic() + timeout
@@ -104,6 +143,10 @@ class Site:
                 raise RuntimeError(f"Job {job_id} {status}. {detail}".rstrip())
             time.sleep(2)
         raise RuntimeError(f"Timed out waiting for job {job_id}.")
+
+def retry_delay(headers, default):
+    retry = headers.get("Retry-After", "")
+    return max(1, int(retry)) if retry.isascii() and retry.isdecimal() else default
 
 
 def write_png(path, width, height, pixels):
@@ -324,6 +367,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default="https://convert.henesys.shop", help="Site origin")
     parser.add_argument("--username", default="admin")
+    parser.add_argument("--wake-passphrase-file", type=Path, help="Unlock the wake gateway using a passphrase file")
+    parser.add_argument("--wake-timeout", type=int, default=180, help="Seconds to wait for SnapOtter to wake")
     parser.add_argument("--password-file", type=Path, help="Read the login password from this file")
     parser.add_argument("--change-password", action="store_true", help="Prompt to rotate the bootstrap password if required")
     ai = parser.add_mutually_exclusive_group()
@@ -336,7 +381,12 @@ def main():
     if args.job_timeout <= 0:
         parser.error("--job-timeout must be positive")
 
+    if args.wake_timeout <= 0:
+        parser.error("--wake-timeout must be positive")
+
     site = Site(args.url)
+    if args.wake_passphrase_file:
+        site.wake(args.wake_passphrase_file.read_text().rstrip("\r\n"), args.wake_timeout)
     if site.json("/api/v1/health").get("status") != "healthy":
         raise RuntimeError("SnapOtter health endpoint did not report healthy.")
 

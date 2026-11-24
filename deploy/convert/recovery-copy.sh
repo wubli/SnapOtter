@@ -20,6 +20,10 @@ destination="$backup_parent/$(basename -- "$2")"
 project=snapotter-convert
 compose=(docker compose --project-name "$project" --project-directory "$deployment_dir" -f "$deployment_dir/compose.yaml")
 config_files=(compose.yaml Caddyfile .env secrets)
+if [[ -f "$deployment_dir/compose.override.yaml" ]]; then
+  compose+=(-f "$deployment_dir/compose.override.yaml")
+  config_files+=(compose.override.yaml idle-stop.sh)
+fi
 for config_file in "${config_files[@]}"; do
   [[ -e "$deployment_dir/$config_file" ]] || fail "Missing deployment file: $config_file"
 done

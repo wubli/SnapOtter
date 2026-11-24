@@ -25,6 +25,7 @@ import { isEnterpriseFeatureEnabled } from "../lib/enterprise-feature.js";
 import { isHttpsUrl } from "../lib/env.js";
 import { reportError } from "../lib/error-report.js";
 import { isHealthProbe } from "../lib/health-probe.js";
+import type { IdleAdmission } from "../lib/idle-admission.js";
 import { assertNotLastAdmin, LastAdminError } from "../lib/last-admin.js";
 import { logger } from "../lib/logger.js";
 import {
@@ -2149,7 +2150,10 @@ async function shouldAuditApiKeyAuthFailure(prefix: string, ip: string): Promise
   }
 }
 
-export async function authMiddleware(app: FastifyInstance): Promise<void> {
+export async function authMiddleware(
+  app: FastifyInstance,
+  idleAdmission?: IdleAdmission,
+): Promise<void> {
   // preParsing is the last hook before Fastify reads the body. A preHandler
   // let an anonymous caller make any protected JSON route buffer and parse up
   // to the upload-sized bodyLimit before the 401 (#4543). onRequest would be
@@ -2157,7 +2161,7 @@ export async function authMiddleware(app: FastifyInstance): Promise<void> {
   // hook, which runs after every instance-level one, so anonymous 401s would
   // never be counted. Cookies are parsed by now (@fastify/cookie, onRequest).
   // Returning undefined keeps the payload stream; `return reply` stops the chain.
-  app.addHook("preParsing", async (request: FastifyRequest, reply: FastifyReply) => {
+  const authenticate = async (request: FastifyRequest, reply: FastifyReply) => {
     // Skip the session DB lookup for bundle assets: they are served on every
     // page load and an unreachable DB must not 500 them (Sentry NODE-1D).
     if (isStaticAssetRequest(request.method, request.url)) return;
@@ -2335,6 +2339,16 @@ export async function authMiddleware(app: FastifyInstance): Promise<void> {
         error: "Password change required",
         code: "MUST_CHANGE_PASSWORD",
       });
+    }
+  };
+  app.addHook("preParsing", async (request, reply) => {
+    if (!idleAdmission) return authenticate(request, reply);
+    if (reply.raw.destroyed) return reply;
+    const done = idleAdmission.beginWork();
+    try {
+      return await authenticate(request, reply);
+    } finally {
+      done();
     }
   });
 }

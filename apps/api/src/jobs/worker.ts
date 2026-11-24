@@ -75,6 +75,47 @@ export {
 } from "./worker-tool-job.js";
 
 const workers: Worker[] = [];
+let idleHold = false;
+let workerPause: Promise<unknown> | undefined;
+
+/** Wait for local workers to finish any in-flight fetch before checking queues. */
+export async function pauseWorkersForIdle(): Promise<void> {
+  if (
+    workerPause ||
+    workers.length !== POOLS.length ||
+    workers.some((worker) => worker.isPaused())
+  ) {
+    throw new Error("Worker pools are not ready to drain");
+  }
+  idleHold = true;
+  workerPause = Promise.allSettled(workers.map((worker) => worker.pause())).then((outcomes) => {
+    if (
+      outcomes.some((outcome) => outcome.status === "rejected") ||
+      workers.some((worker) => !worker.isPaused())
+    ) {
+      throw new Error("Worker pause failed");
+    }
+  });
+  try {
+    await workerPause;
+  } finally {
+    workerPause = undefined;
+  }
+}
+
+export function resumeWorkersFromIdle(): void {
+  if (!idleHold) return;
+  // When a pause times out, let its in-flight Redis operation settle before
+  // restarting the local loops. HTTP admission may already accept new jobs.
+  const resume = () => {
+    idleHold = false;
+    for (const worker of workers) {
+      if (!worker.closing && worker.isPaused()) worker.resume();
+    }
+  };
+  if (workerPause) void workerPause.then(resume, resume);
+  else resume();
+}
 
 const ON_DEMAND_SYSTEM_JOBS: ReadonlySet<string> = new Set([SYSTEM_JOBS.gdprExport]);
 const SCHEDULED_SYSTEM_JOBS: ReadonlySet<string> = new Set(
@@ -153,7 +194,10 @@ export function startWorkers(): void {
       });
 
       worker.on("error", createWorkerErrorLogger(pool));
-      worker.on("error", createWorkerErrorBackoff(worker, pool));
+      worker.on(
+        "error",
+        createWorkerErrorBackoff(worker, pool, undefined, () => !idleHold),
+      );
 
       worker.on("failed", (job, err) => {
         if (!job) return;
@@ -268,7 +312,10 @@ export function startWorkers(): void {
     });
 
     worker.on("error", createWorkerErrorLogger(pool));
-    worker.on("error", createWorkerErrorBackoff(worker, pool));
+    worker.on(
+      "error",
+      createWorkerErrorBackoff(worker, pool, undefined, () => !idleHold),
+    );
 
     worker.on("failed", (job, err) => {
       if (!job) return;

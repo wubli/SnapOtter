@@ -27,7 +27,12 @@ import {
 } from "./jobs/job-reconciliation.js";
 import { closeQueues, perPoolHealth, queueCounts } from "./jobs/queues.js";
 import { enqueueSystemJob, SYSTEM_JOBS, scheduleSystemJobs } from "./jobs/system-jobs.js";
-import { closeWorkers, startWorkers } from "./jobs/worker.js";
+import {
+  closeWorkers,
+  pauseWorkersForIdle,
+  resumeWorkersFromIdle,
+  startWorkers,
+} from "./jobs/worker.js";
 import { routeAiLogsToPino } from "./lib/ai-log-sink.js";
 import { initAnalytics, shutdownAnalytics } from "./lib/analytics.js";
 import { stripBasePath } from "./lib/base-path.js";
@@ -48,6 +53,9 @@ import {
 } from "./lib/feature-status.js";
 import { gpuBootLine } from "./lib/gpu-boot-line.js";
 import { HEALTH_PROBE_ROUTE } from "./lib/health-probe.js";
+import { IdleAdmission } from "./lib/idle-admission.js";
+import { IdleControl, listenForIdleControl } from "./lib/idle-control.js";
+import { snapshotIdleWork } from "./lib/idle-work.js";
 import { ensureInstanceId } from "./lib/instance-id.js";
 import { trackInstanceStarted } from "./lib/instance-started.js";
 import { logger } from "./lib/logger.js";
@@ -393,6 +401,9 @@ app.server.headersTimeout = 60 * 1000;
 
 // First, so a request refused by a later hook is counted and released too.
 trackRequestsInFlight(app);
+const idleAdmission = env.SNAPOTTER_IDLE_TOKEN_FILE ? new IdleAdmission() : undefined;
+idleAdmission?.install(app);
+let idleListener: Awaited<ReturnType<typeof listenForIdleControl>> | undefined;
 
 app.removeContentTypeParser("application/json");
 app.addContentTypeParser("application/json", { parseAs: "string" }, (_request, body, done) => {
@@ -492,7 +503,7 @@ await configRoutes(app);
 await preferencesRoutes(app);
 
 // Auth middleware (must be registered before routes it protects)
-await authMiddleware(app);
+await authMiddleware(app, idleAdmission);
 
 // Tool access gate (after auth so request.user is populated). Covers every
 // per-tool endpoint including the hand-written routes, which each used to
@@ -786,6 +797,14 @@ void warmQueueEvents().catch((err) => {
 // Start
 try {
   await app.listen({ port: env.PORT, host: env.HOST });
+  if (idleAdmission && env.SNAPOTTER_IDLE_TOKEN_FILE) {
+    const controller = new IdleControl(idleAdmission, {
+      snapshot: snapshotIdleWork,
+      pause: pauseWorkersForIdle,
+      resume: resumeWorkersFromIdle,
+    });
+    idleListener = await listenForIdleControl(env.SNAPOTTER_IDLE_TOKEN_FILE, controller);
+  }
 
   // The AI sidecar is not started here: it spawns on the first AI request and
   // exits after AI_SIDECAR_IDLE_TIMEOUT, so an idle server holds no Python process.
@@ -827,7 +846,7 @@ async function shutdown(signal: string) {
   forceExit.unref();
 
   try {
-    await app.close();
+    await Promise.all([app.close(), idleListener?.close()]);
     logger.info("HTTP server closed");
   } catch (err) {
     logger.error({ err }, "Error closing HTTP server");
