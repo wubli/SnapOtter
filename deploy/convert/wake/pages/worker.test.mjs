@@ -156,6 +156,41 @@ test("recognized cold navigation starts automatically and status/upload do not w
   });
 });
 
+test("the wake endpoint accepts a zero-byte POST stream and rejects streams with data", async () => {
+  const f = scenario();
+  f.healthy(true);
+  const cookie = await cookieFor(f);
+  f.advance(2100);
+  f.healthy(false);
+
+  const post = (body, headers = {}) =>
+    f.request("/_wake", {
+      method: "POST",
+      headers: { ...fromBrowser, cookie, ...headers },
+      body,
+      duplex: "half",
+    });
+  const unexpected = new ReadableStream({
+    start(stream) {
+      stream.enqueue(new Uint8Array([1]));
+    },
+  });
+  assert.equal((await post(unexpected)).status, 400);
+  assert.equal(f.calls.filter(({ url }) => url.endsWith("/wake")).length, 0);
+
+  for (const headers of [{}, { "content-length": "0" }]) {
+    const empty = new ReadableStream({
+      start(stream) {
+        stream.close();
+      },
+    });
+    const response = await post(empty, headers);
+    assert.equal(response.status, 202);
+    assert.deepEqual(await response.json(), { state: "starting" });
+  }
+  assert.equal(f.calls.filter(({ url }) => url.endsWith("/wake")).length, 1);
+});
+
 test("fresh readiness gates a write and forwards its body only once as a stream", async () => {
   const f = scenario();
   f.healthy(true);

@@ -283,6 +283,29 @@ async function unlockForm(request) {
   }
 }
 
+async function hasEmptyBody(request) {
+  const length = request.headers.get("content-length");
+  if (length !== null && length !== "0") return false;
+  if (!request.body) return true;
+
+  // Cloudflare can expose a zero-byte POST as a stream. Inspect only enough
+  // to detect EOF or reject the first nonempty chunk.
+  const reader = request.body.getReader();
+  try {
+    for (let reads = 0; reads < 8; reads++) {
+      const { done, value } = await reader.read();
+      if (done) return true;
+      if (value.byteLength > 0) break;
+    }
+    await reader.cancel();
+    return false;
+  } catch {
+    return false;
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 async function validPassphrase(input, settings) {
   if (input === undefined) return false;
   const key = await signingKey(settings.cookieSecret);
@@ -400,7 +423,7 @@ function createWorker(fetchUpstream = fetch, now = Date.now) {
       return new Response(null, { status: 303, headers });
     }
     if (!remembered) return json(401, "unauthorized");
-    if (request.body !== null) return json(400, "invalid-request");
+    if (!(await hasEmptyBody(request))) return json(400, "invalid-request");
     if (await ready(settings)) return json(200, "ready");
     const state = await requestWake(settings);
     return json(state === "unavailable" ? 503 : 202, state, { "retry-after": "10" });
