@@ -101,6 +101,7 @@ def publish(body):
         method="POST",
         headers={
             "Content-Type": "application/json",
+            "User-Agent": "SnapOtter-Roster/1.0",
             "X-SnapOtter-Roster-Token": authorization,
         },
     )
