@@ -1,0 +1,139 @@
+name: snapotter-convert
+
+x-logging: &logging
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  caddy:
+    image: caddy:2-alpine@sha256:003a97808e781aa9f7e75cc2f43d34d461099031faf5e20faefb9f61126836f0
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - frontend
+    mem_limit: 128m
+    logging: *logging
+
+  snapotter:
+    image: ${SNAPOTTER_IMAGE:?Set SNAPOTTER_IMAGE to the fork image}
+    restart: unless-stopped
+    environment:
+      AUTH_ENABLED: "true"
+      DEFAULT_USERNAME: ${DEFAULT_USERNAME:-admin}
+      DEFAULT_PASSWORD_FILE: /run/secrets/bootstrap_password
+      SKIP_MUST_CHANGE_PASSWORD: "false"
+      AI_PROVIDER: openai
+      OPENAI_API_KEY_FILE: /run/secrets/openai_api_key
+      OIDC_ENABLED: "false"
+      SAML_ENABLED: "false"
+      EXTERNAL_URL: https://convert.henesys.shop
+      DATABASE_URL: postgres://snapotter_app:${POSTGRES_APP_PASSWORD:?Set POSTGRES_APP_PASSWORD}@postgres:5432/snapotter
+      DATABASE_MIGRATION_URL: postgres://snapotter:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/snapotter
+      REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379
+      CONCURRENT_JOBS: "1"
+      MAX_WORKER_THREADS: "1"
+      MAX_UPLOAD_SIZE_MB: "100"
+      MAX_BATCH_SIZE: "10"
+      MAX_MEGAPIXELS: "40"
+      MAX_WORKSPACE_SIZE_GB: "4"
+      PROCESSING_TIMEOUT_S: "300"
+      FILE_MAX_AGE_HOURS: "24"
+      RATE_LIMIT_PER_MIN: "300"
+    secrets:
+      - bootstrap_password
+      - openai_api_key
+    volumes:
+      - app-data:/data
+      - workspace:/tmp/workspace
+    networks:
+      - frontend
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    mem_limit: ${SNAPOTTER_MEMORY_LIMIT:-1400m}
+    cpus: 2
+    pids_limit: 256
+    shm_size: 256m
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE, FOWNER, KILL]
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
+
+  postgres:
+    image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: snapotter
+      POSTGRES_DB: snapotter
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - backend
+    mem_limit: 256m
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "max_connections=50"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "snapotter", "-d", "snapotter"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: *logging
+
+  redis:
+    image: redis:8-alpine@sha256:9d317178eceac8454a2284a9e6df2466b93c745529947f0cd42a0fa9609d7005
+    restart: unless-stopped
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - 64mb
+      - --maxmemory-policy
+      - noeviction
+      - --requirepass
+      - ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    networks:
+      - backend
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: *logging
+
+networks:
+  frontend:
+  backend:
+    internal: true
+
+volumes:
+  caddy-data:
+  caddy-config:
+  app-data:
+  workspace:
+  postgres-data:
+  redis-data:
+
+secrets:
+  bootstrap_password:
+    file: ./secrets/bootstrap_password
+  openai_api_key:
+    file: ./secrets/openai_api_key

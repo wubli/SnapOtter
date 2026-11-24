@@ -1210,6 +1210,10 @@ export async function registerFeatureRoutes(app: FastifyInstance): Promise<void>
       const user = requireAuth(request, reply);
       if (!user) return reply;
 
+      if (env.AI_PROVIDER === "openai") {
+        return reply.send({ bundles: [], upscaleCpuMaxMp: null });
+      }
+
       // The upscale panel warns before the run that a large photo will be
       // reduced on a CPU host (#5036). Null means a GPU may run it uncapped;
       // the server stays the source of truth at run time.
@@ -1217,6 +1221,8 @@ export async function registerFeatureRoutes(app: FastifyInstance): Promise<void>
       return reply.send({ bundles: getFeatureStates(), upscaleCpuMaxMp });
     },
   );
+
+  if (env.AI_PROVIDER === "openai") return;
 
   // POST /api/v1/admin/features/:bundleId/install - Install a feature bundle
   app.post(

@@ -18,6 +18,7 @@ import {
 } from "@/lib/dimension-limits";
 import { format } from "@/lib/format";
 import { useFileStore } from "@/stores/file-store";
+import { useSettingsStore } from "@/stores/settings-store";
 
 type CropMode = "subject" | "face" | "trim";
 type SubjectTab = "presets" | "custom";
@@ -40,6 +41,7 @@ export interface SmartCropControlsProps {
 
 export function SmartCropControls({ settings: initialSettings, onChange }: SmartCropControlsProps) {
   const { t } = useTranslation();
+  const aiProvider = useSettingsStore((s) => s.aiProvider);
   const [mode, setMode] = useState<CropMode>("subject");
   const [subjectTab, setSubjectTab] = useState<SubjectTab>("custom");
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
@@ -312,9 +314,11 @@ export function SmartCropControls({ settings: initialSettings, onChange }: Smart
         >
           {t.toolSettings["smart-crop"].subjectFocus}
         </button>
-        <button type="button" onClick={() => setMode("face")} className={modeTabClass("face")}>
-          {t.toolSettings["smart-crop"].faceFocus}
-        </button>
+        {(aiProvider === "local" || mode === "face") && (
+          <button type="button" onClick={() => setMode("face")} className={modeTabClass("face")}>
+            {t.toolSettings["smart-crop"].faceFocus}
+          </button>
+        )}
         <button type="button" onClick={() => setMode("trim")} className={modeTabClass("trim")}>
           {t.toolSettings["smart-crop"].autoTrim}
         </button>

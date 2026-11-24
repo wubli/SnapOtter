@@ -1,6 +1,8 @@
 import { ArrowLeft } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "@/contexts/i18n-context";
+import { appUrl } from "@/lib/app-url";
 import { format } from "@/lib/format";
 
 /**
@@ -35,6 +37,19 @@ function SentenceWithCode({
 
 export function PrivacyPolicyPage() {
   const { t } = useTranslation();
+  const [aiProvider, setAiProvider] = useState<"local" | "openai">();
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(appUrl("/api/v1/config/ai"), { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const { aiProvider } = await response.json();
+        if (aiProvider === "local" || aiProvider === "openai") setAiProvider(aiProvider);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+
   return (
     <main id="main-content" tabIndex={-1} className="min-h-screen bg-background text-foreground">
       <div className="max-w-2xl mx-auto px-6 py-12">
@@ -61,7 +76,13 @@ export function PrivacyPolicyPage() {
             <h2 className="text-lg font-semibold text-foreground mb-2">
               {t.privacyPolicy.localProcessing.heading}
             </h2>
-            <p>{t.privacyPolicy.localProcessing.body}</p>
+            {aiProvider === "local" && <p>{t.privacyPolicy.localProcessing.body}</p>}
+            {aiProvider === "openai" && (
+              <p>
+                SnapOtter runs standard conversions on this server. When you use Transcribe Audio or
+                Auto Subtitles, SnapOtter sends the audio to OpenAI for transcription.
+              </p>
+            )}
           </section>
 
           <section>
@@ -94,7 +115,13 @@ export function PrivacyPolicyPage() {
             <h2 className="text-lg font-semibold text-foreground mb-2">
               {t.privacyPolicy.thirdParty.heading}
             </h2>
-            <p>{t.privacyPolicy.thirdParty.body}</p>
+            {aiProvider === "local" && <p>{t.privacyPolicy.thirdParty.body}</p>}
+            {aiProvider === "openai" && (
+              <p>
+                OpenAI processes audio from transcription and subtitle jobs. PostHog and Sentry
+                provide anonymous analytics as described above.
+              </p>
+            )}
           </section>
 
           <section>
@@ -108,7 +135,13 @@ export function PrivacyPolicyPage() {
             <h2 className="text-lg font-semibold text-foreground mb-2">
               {t.privacyPolicy.yourControl.heading}
             </h2>
-            <p>{t.privacyPolicy.yourControl.body}</p>
+            {aiProvider === "local" && <p>{t.privacyPolicy.yourControl.body}</p>}
+            {aiProvider === "openai" && (
+              <p>
+                The instance operator controls data stored on this server. OpenAI handles audio
+                submitted for transcription under its API data policies.
+              </p>
+            )}
           </section>
         </div>
       </div>

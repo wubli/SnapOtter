@@ -64,7 +64,13 @@ export function HomePage() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<string>("all");
   const [search, setSearch] = useState("");
-  const { fetch: fetchSettings, disabledTools, experimentalEnabled, loaded } = useSettingsStore();
+  const {
+    fetch: fetchSettings,
+    disabledTools,
+    deploymentDisabledTools,
+    experimentalEnabled,
+    loaded,
+  } = useSettingsStore();
   const recentToolIds = useRecentTools();
   const pinnedIds = usePinnedToolsStore((s) => s.pinnedTools);
   const fetchPins = usePinnedToolsStore((s) => s.fetch);
@@ -124,11 +130,13 @@ export function HomePage() {
     if (!loaded) return [];
     return TOOLS.filter((tool) => {
       if (tool.disabled) return false;
-      if (isToolDisabled(tool.id, disabledTools)) return false;
+      if (isToolDisabled(tool.id, disabledTools) || deploymentDisabledTools.includes(tool.id)) {
+        return false;
+      }
       if (tool.experimental && !experimentalEnabled) return false;
       return true;
     });
-  }, [disabledTools, experimentalEnabled, loaded]);
+  }, [disabledTools, deploymentDisabledTools, experimentalEnabled, loaded]);
 
   const searchResults = useFuseSearch(visibleTools, search);
 

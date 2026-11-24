@@ -19,6 +19,7 @@ import { NO_SPEECH_DETECTED_WARNING } from "../../lib/empty-result-warnings.js";
 import { formatZodErrors } from "../../lib/errors.js";
 import { isToolInstalled } from "../../lib/feature-status.js";
 import { multipartFailure } from "../../lib/multipart-parts.js";
+import { transcribeWithOpenAi } from "../../lib/openai-transcription.js";
 import { validateStagedMedia } from "../../lib/staged-media-validation.js";
 import { type TranscriptSegment, toSrt, toVtt } from "../../lib/subtitle-format.js";
 import {
@@ -29,6 +30,7 @@ import {
 import { receiveUpload } from "../../lib/upload-stream.js";
 import { getAuthUser } from "../../plugins/auth.js";
 import { buildAsyncAcceptedPayload } from "../async-response.js";
+import type { ToolProcessCtx } from "../tool-factory.js";
 
 const settingsSchema = z.object({
   language: z
@@ -37,6 +39,8 @@ const settingsSchema = z.object({
   format: z.enum(["srt", "vtt"]).default("srt"),
 });
 
+const jobSettingsSchema = settingsSchema.extend({ provider: z.literal("openai").optional() });
+
 const OUTPUT_CONTENT_TYPES: Record<string, string> = {
   srt: "application/x-subrip",
   vtt: "text/vtt",
@@ -44,7 +48,7 @@ const OUTPUT_CONTENT_TYPES: Record<string, string> = {
 
 // -- AI job handler (runs inside the BullMQ worker) --
 registerAiJobHandler("auto-subtitles", async (input, data, ctx) => {
-  const settings = settingsSchema.parse(data.settings);
+  const settings = jobSettingsSchema.parse(data.settings);
 
   ctx.report(5, "Preparing video");
 
@@ -63,24 +67,14 @@ registerAiJobHandler("auto-subtitles", async (input, data, ctx) => {
 
   ctx.report(10, "Extracting audio");
 
-  // Extract 16kHz mono WAV (whisper's preferred input)
-  const wavPath = join(videoDir, "audio-16k.wav");
-  await runFfmpeg(
-    ["-i", videoPath, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", wavPath],
-    { timeoutMs: 10 * 60_000, signal: ctx.signal },
-  );
-
-  ctx.report(20, "Transcribing audio");
-
-  const result = await transcribeAudio(
-    wavPath,
-    { language: settings.language, signal: ctx.signal, toolId: "auto-subtitles" },
-    (percent, stage) => {
-      // Scale transcription progress into 20..95 range
-      const scaled = 20 + Math.round(percent * 0.75);
-      ctx.report(Math.min(scaled, 95), stage);
-    },
-  );
+  const result =
+    settings.provider === "openai"
+      ? await transcribeWithOpenAi(
+          videoPath,
+          { language: settings.language, timed: true, startProgress: 20 },
+          ctx,
+        )
+      : await transcribeLocally(videoPath, settings.language, ctx);
 
   const segments: TranscriptSegment[] = result.segments.map((seg) => ({
     startS: seg.startS,
@@ -106,6 +100,27 @@ registerAiJobHandler("auto-subtitles", async (input, data, ctx) => {
   };
 });
 
+async function transcribeLocally(videoPath: string, language: string, ctx: ToolProcessCtx) {
+  // Extract 16kHz mono WAV (whisper's preferred input)
+  const wavPath = join(ctx.scratchDir, "audio-16k.wav");
+  await runFfmpeg(
+    ["-i", videoPath, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", wavPath],
+    { timeoutMs: 10 * 60_000, signal: ctx.signal },
+  );
+
+  ctx.report(20, "Transcribing audio");
+
+  return transcribeAudio(
+    wavPath,
+    { language, signal: ctx.signal, toolId: "auto-subtitles" },
+    (percent, stage) => {
+      // Scale transcription progress into 20..95 range
+      const scaled = 20 + Math.round(percent * 0.75);
+      ctx.report(Math.min(scaled, 95), stage);
+    },
+  );
+}
+
 export function registerAutoSubtitles(app: FastifyInstance) {
   app.post(
     "/api/v1/tools/video/auto-subtitles",
@@ -122,6 +137,7 @@ export function registerAutoSubtitles(app: FastifyInstance) {
         });
       }
 
+      const provider = process.env.AI_PROVIDER === "openai" ? "openai" : undefined;
       const userId = getAuthUser(request)?.id ?? null;
       const jobId = randomUUID();
       let filename = "video";
@@ -214,7 +230,7 @@ export function registerAutoSubtitles(app: FastifyInstance) {
           pool: "ai",
           inputRefs: [inputKey],
           filename,
-          settings,
+          settings: { ...settings, ...(provider && { provider }) },
           clientJobId: clientJobId ?? undefined,
           fileId: fileId ?? undefined,
           saveMode,

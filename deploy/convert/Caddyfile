@@ -1,0 +1,4 @@
+convert.henesys.shop {
+	encode zstd gzip
+	reverse_proxy snapotter:1349
+}

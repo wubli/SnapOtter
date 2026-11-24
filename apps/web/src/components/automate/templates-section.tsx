@@ -1,6 +1,7 @@
 import { type Modality, PIPELINE_TEMPLATES, type PipelineTemplate } from "@snapotter/shared";
 import { useTranslation } from "@/contexts/i18n-context";
 import { getModalityName } from "@/lib/tool-i18n";
+import { useSettingsStore } from "@/stores/settings-store";
 import { TemplateCard } from "./template-card";
 
 const MODALITY_ORDER: Modality[] = ["image", "document", "audio", "video", "file"];
@@ -12,10 +13,15 @@ interface TemplatesSectionProps {
 
 export function TemplatesSection({ onUse, emphasized }: TemplatesSectionProps) {
   const { t } = useTranslation();
+  const deploymentDisabledTools = useSettingsStore((s) => s.deploymentDisabledTools);
 
   const groups = MODALITY_ORDER.map((modality) => ({
     modality,
-    templates: PIPELINE_TEMPLATES.filter((tpl) => tpl.modality === modality),
+    templates: PIPELINE_TEMPLATES.filter(
+      (tpl) =>
+        tpl.modality === modality &&
+        tpl.steps.every((step) => !deploymentDisabledTools.includes(step.toolId)),
+    ),
   })).filter((g) => g.templates.length > 0);
 
   return (

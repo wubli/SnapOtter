@@ -8,6 +8,8 @@ type Theme = "light" | "dark" | "system";
 
 interface SettingsState {
   disabledTools: string[];
+  deploymentDisabledTools: string[];
+  aiProvider: "local" | "openai";
   experimentalEnabled: boolean;
   defaultToolView: "sidebar" | "fullscreen";
   defaultTheme: Theme;
@@ -29,6 +31,8 @@ let inFlight: Promise<void> | null = null;
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   disabledTools: [],
+  deploymentDisabledTools: [],
+  aiProvider: "local",
   experimentalEnabled: false,
   defaultToolView: "sidebar",
   defaultTheme: "light",
@@ -44,6 +48,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       try {
         const data = await apiGet<{
           settings: Record<string, string>;
+          deploymentDisabledTools?: string[];
+          aiProvider?: "openai";
         }>("/v1/settings");
 
         const defaultTheme = VALID_THEMES.has(data.settings.defaultTheme)
@@ -52,6 +58,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
         set({
           disabledTools: parseStringArray(data.settings.disabledTools),
+          deploymentDisabledTools: data.deploymentDisabledTools ?? [],
+          aiProvider: data.aiProvider ?? "local",
           experimentalEnabled: data.settings.enableExperimentalTools === "true",
           defaultToolView:
             data.settings.defaultToolView === "fullscreen" ? "fullscreen" : "sidebar",

@@ -24,6 +24,7 @@ import {
   parseSaveModeField,
   type ToolJobData,
 } from "../jobs/types.js";
+import { isDeploymentToolDisabled } from "../lib/ai-tool-policy.js";
 import { reportEngineUnavailable } from "../lib/engine-unavailable.js";
 import { markQueueEventsJobFailure, markUpstreamError, reportError } from "../lib/error-report.js";
 import { formatZodErrors, friendlyError } from "../lib/errors.js";
@@ -240,14 +241,14 @@ const toolRegistry = new Map<string, AnyToolRouteConfig>();
  * Retrieve a registered tool config by its ID.
  */
 export function getToolConfig(toolId: string): AnyToolRouteConfig | undefined {
-  return toolRegistry.get(toolId);
+  return isDeploymentToolDisabled(toolId) ? undefined : toolRegistry.get(toolId);
 }
 
 /**
  * Return the IDs of all tools in the pipeline/batch registry.
  */
 export function getRegisteredToolIds(): string[] {
-  return [...toolRegistry.keys()];
+  return [...toolRegistry.keys()].filter((id) => !isDeploymentToolDisabled(id));
 }
 
 /**

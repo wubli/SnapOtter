@@ -21,7 +21,7 @@ umask 0007
 # passing credentials as plain-text environment variables.
 #
 # Supported: DEFAULT_PASSWORD, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY,
-#            OIDC_CLIENT_SECRET, COOKIE_SECRET, SNAPOTTER_LICENSE_KEY
+#            OIDC_CLIENT_SECRET, COOKIE_SECRET, SNAPOTTER_LICENSE_KEY, OPENAI_API_KEY
 resolve_file_env() {
   var="$1"
   file_var="${var}_FILE"
@@ -52,6 +52,7 @@ resolve_file_env S3_SECRET_ACCESS_KEY
 resolve_file_env OIDC_CLIENT_SECRET
 resolve_file_env COOKIE_SECRET
 resolve_file_env SNAPOTTER_LICENSE_KEY
+resolve_file_env OPENAI_API_KEY
 
 # Apply auth defaults at runtime so they are never baked into image layers.
 # Users can override any of these via -e flags at docker run time.
@@ -114,7 +115,7 @@ fi
 # The image stamps /opt/venv/.venv-version with a hash of `pip freeze`.
 # When the stamp in /data/ai/venv doesn't match, the base packages changed
 # and we need a fresh copy so 2.0 Python tools don't fail with ImportError.
-if [ -d "/opt/venv" ]; then
+if [ "${AI_PROVIDER:-local}" != openai ] && [ -d "/opt/venv" ]; then
   NEED_BOOTSTRAP=false
 
   if [ ! -d "$AI_VENV" ]; then

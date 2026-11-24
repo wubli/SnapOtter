@@ -128,10 +128,10 @@ function makeReply() {
   };
 }
 
-function makeRequest(filename: string) {
+function makeRequest(filename: string, settings = "{}") {
   const partsList = [
     { type: "file", fieldname: "file", filename, file: {} },
-    { type: "field", fieldname: "settings", value: "{}" },
+    { type: "field", fieldname: "settings", value: settings },
   ];
   return {
     headers: {},
@@ -142,9 +142,9 @@ function makeRequest(filename: string) {
   };
 }
 
-async function post(path: string, filename: string) {
+async function post(path: string, filename: string, settings?: string) {
   const reply = makeReply();
-  await handlers[path](makeRequest(filename), reply);
+  await handlers[path](makeRequest(filename, settings), reply);
   const jobId = mocks.receiveUpload.mock.calls.at(-1)?.[1] as string;
   return { reply, jobId };
 }
@@ -173,6 +173,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   for (const k of CAP_KEYS) mutableEnv[k] = originalCaps[k];
 });
 
@@ -292,5 +293,32 @@ describe("AI media routes run media ingress validation before enqueue (#4290)", 
       pool: "ai",
     });
     expect(mocks.deletePrefix).not.toHaveBeenCalled();
+  });
+});
+
+describe("AI media route provider selection", () => {
+  it.each([
+    [AUTO_SUBTITLES, "talk.mp4", VIDEO_INFO],
+    [TRANSCRIBE, "call.wav", AUDIO_INFO],
+  ])("%s enqueues the configured provider", async (path, name, info) => {
+    vi.stubEnv("AI_PROVIDER", "openai");
+    mocks.probeMedia.mockResolvedValue(info);
+
+    const { reply } = await post(path, name, '{"provider":"local"}');
+
+    expect(reply.statusCode).toBe(202);
+    expect(mocks.enqueueToolJob).toHaveBeenCalledWith(
+      expect.objectContaining({ settings: expect.objectContaining({ provider: "openai" }) }),
+    );
+  });
+
+  it("ignores a client attempt to choose OpenAI on a local deployment", async () => {
+    vi.stubEnv("AI_PROVIDER", "local");
+    mocks.probeMedia.mockResolvedValue(AUDIO_INFO);
+
+    const { reply } = await post(TRANSCRIBE, "call.wav", '{"provider":"openai"}');
+
+    expect(reply.statusCode).toBe(202);
+    expect(mocks.enqueueToolJob.mock.calls[0][0].settings).not.toHaveProperty("provider");
   });
 });

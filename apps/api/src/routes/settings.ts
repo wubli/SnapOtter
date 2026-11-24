@@ -12,6 +12,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { env } from "../config.js";
 import { db, schema } from "../db/index.js";
+import { deploymentDisabledTools } from "../lib/ai-tool-policy.js";
 import { auditFromRequest } from "../lib/audit.js";
 import { decryptSettingWithRotation, encrypt } from "../lib/encryption.js";
 import { reportError } from "../lib/error-report.js";
@@ -109,6 +110,9 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
         settings[row.key] = decrypted;
       }
 
+      if (env.AI_PROVIDER === "openai") {
+        return reply.send({ settings, aiProvider: env.AI_PROVIDER, deploymentDisabledTools });
+      }
       return reply.send({ settings });
     },
   );

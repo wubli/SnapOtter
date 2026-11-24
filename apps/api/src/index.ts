@@ -334,31 +334,33 @@ await startAnalyticsGateListener();
 // and recovery (clearing stale locks and partial downloads) is wrapped here so a
 // malformed installed.json or unreadable models dir degrades to a warning rather
 // than a fatal startup crash (Sentry NODE-12).
-ensureAiDirs();
-let initialOcrRuntimeReconciliation: Promise<boolean> | undefined;
-startInterruptedInstallRecovery({
-  onRecovered: () => {
-    if (!acquireInstallLock("__startup_ocr_reconcile__")) return false;
-    const installLockFd = getInstallLockFdForChild();
-    const reconciliation = (async () => {
-      try {
-        await runOcrRuntimeMaintenance("reconcile", { aiDataDir: getAiDir(), installLockFd });
-        if (isFeatureInstalled("ocr")) {
-          await purgeOcrRuntimeDownloads(getAiDir(), installLockFd);
+if (env.AI_PROVIDER !== "openai") {
+  ensureAiDirs();
+  let initialOcrRuntimeReconciliation: Promise<boolean> | undefined;
+  startInterruptedInstallRecovery({
+    onRecovered: () => {
+      if (!acquireInstallLock("__startup_ocr_reconcile__")) return false;
+      const installLockFd = getInstallLockFdForChild();
+      const reconciliation = (async () => {
+        try {
+          await runOcrRuntimeMaintenance("reconcile", { aiDataDir: getAiDir(), installLockFd });
+          if (isFeatureInstalled("ocr")) {
+            await purgeOcrRuntimeDownloads(getAiDir(), installLockFd);
+          }
+          return true;
+        } catch (error) {
+          logger.warn({ err: error }, "[ocr-runtime] Startup reconciliation failed; retrying");
+          return false;
+        } finally {
+          releaseInstallLock();
         }
-        return true;
-      } catch (error) {
-        logger.warn({ err: error }, "[ocr-runtime] Startup reconciliation failed; retrying");
-        return false;
-      } finally {
-        releaseInstallLock();
-      }
-    })();
-    initialOcrRuntimeReconciliation ??= reconciliation;
-    return reconciliation;
-  },
-});
-if (initialOcrRuntimeReconciliation) await initialOcrRuntimeReconciliation;
+      })();
+      initialOcrRuntimeReconciliation ??= reconciliation;
+      return reconciliation;
+    },
+  });
+  if (initialOcrRuntimeReconciliation) await initialOcrRuntimeReconciliation;
+}
 
 const app = Fastify({
   rewriteUrl: (request) => stripBasePath(request.url ?? "/", env.BASE_PATH),
@@ -787,7 +789,7 @@ try {
 
   // The AI sidecar is not started here: it spawns on the first AI request and
   // exits after AI_SIDECAR_IDLE_TIMEOUT, so an idle server holds no Python process.
-  enableLazyAiDispatcher();
+  if (env.AI_PROVIDER !== "openai") enableLazyAiDispatcher();
   const gpuLine = gpuBootLine(gatherSystemProperties().gpu_present);
   // One entry per line: pino escapes newlines, so a joined banner would print
   // as a single unreadable JSON string.

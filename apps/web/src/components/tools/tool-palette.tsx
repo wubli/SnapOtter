@@ -21,13 +21,15 @@ export function ToolPalette({ onAddStep, className }: ToolPaletteProps) {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [disabledTools, setDisabledTools] = useState<string[]>([]);
+  const [deploymentDisabledTools, setDeploymentDisabledTools] = useState<string[]>([]);
   const [experimentalEnabled, setExperimentalEnabled] = useState(false);
   const [pipelineToolIds, setPipelineToolIds] = useState<string[] | null>(null);
 
   useEffect(() => {
-    apiGet<{ settings: Record<string, string> }>("/v1/settings")
+    apiGet<{ settings: Record<string, string>; deploymentDisabledTools?: string[] }>("/v1/settings")
       .then((data) => {
         setDisabledTools(parseStringArray(data.settings.disabledTools));
+        setDeploymentDisabledTools(data.deploymentDisabledTools ?? []);
         setExperimentalEnabled(data.settings.enableExperimentalTools === "true");
       })
       .catch(() => {});
@@ -40,12 +42,13 @@ export function ToolPalette({ onAddStep, className }: ToolPaletteProps) {
   const preFiltered = useMemo(() => {
     return TOOLS.filter((t) => {
       if (EXCLUDED_TOOLS.has(t.id)) return false;
-      if (isToolDisabled(t.id, disabledTools)) return false;
+      if (isToolDisabled(t.id, disabledTools) || deploymentDisabledTools.includes(t.id))
+        return false;
       if (t.experimental && !experimentalEnabled) return false;
       if (pipelineToolIds && !pipelineToolIds.includes(t.id)) return false;
       return true;
     });
-  }, [disabledTools, experimentalEnabled, pipelineToolIds]);
+  }, [disabledTools, deploymentDisabledTools, experimentalEnabled, pipelineToolIds]);
 
   const availableTools = useFuseSearch(preFiltered, search);
 

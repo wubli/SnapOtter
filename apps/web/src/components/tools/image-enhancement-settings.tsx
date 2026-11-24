@@ -7,6 +7,7 @@ import { useToolProcessor } from "@/hooks/use-tool-processor";
 import { appUrl } from "@/lib/app-url";
 import { format } from "@/lib/format";
 import { useFileStore } from "@/stores/file-store";
+import { useSettingsStore } from "@/stores/settings-store";
 
 type EnhancementMode = "auto" | "portrait" | "landscape" | "low-light" | "food" | "document";
 
@@ -181,6 +182,7 @@ export function ImageEnhancementControls({
     sharpness: true,
     denoise: true,
   });
+  const aiProvider = useSettingsStore((s) => s.aiProvider);
   const [deepEnhance, setDeepEnhance] = useState(false);
 
   const analyzeAbortRef = useRef<AbortController | null>(null);
@@ -367,33 +369,34 @@ export function ImageEnhancementControls({
         />
       </div>
 
-      {/* Deep Enhance toggle */}
-      <div className="flex items-center justify-between py-1">
-        <div className="flex items-center gap-2">
-          <Wand2 className="h-3.5 w-3.5 text-muted-foreground" />
-          <div>
-            <p className="text-xs font-medium">{t.toolSettings.imageEnhancement.deepEnhance}</p>
-            <p className="text-[10px] text-muted-foreground">
-              {t.toolSettings["image-enhancement"].removesNoiseAndArtifactsUsing}
-            </p>
+      {aiProvider === "local" && (
+        <div className="flex items-center justify-between py-1">
+          <div className="flex items-center gap-2">
+            <Wand2 className="h-3.5 w-3.5 text-muted-foreground" />
+            <div>
+              <p className="text-xs font-medium">{t.toolSettings.imageEnhancement.deepEnhance}</p>
+              <p className="text-[10px] text-muted-foreground">
+                {t.toolSettings["image-enhancement"].removesNoiseAndArtifactsUsing}
+              </p>
+            </div>
           </div>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={deepEnhance}
-          onClick={() => setDeepEnhance(!deepEnhance)}
-          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-            deepEnhance ? "bg-primary" : "bg-muted"
-          }`}
-        >
-          <span
-            className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
-              deepEnhance ? "translate-x-4.5" : "translate-x-0.5"
+          <button
+            type="button"
+            role="switch"
+            aria-checked={deepEnhance}
+            onClick={() => setDeepEnhance(!deepEnhance)}
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+              deepEnhance ? "bg-primary" : "bg-muted"
             }`}
-          />
-        </button>
-      </div>
+          >
+            <span
+              className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
+                deepEnhance ? "translate-x-4.5" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+        </div>
+      )}
 
       {/* Analysis badges */}
       {analyzing && (

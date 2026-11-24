@@ -45,6 +45,8 @@ import {
   SafeError,
 } from "@snapotter/shared";
 import * as tar from "tar";
+import { env } from "../config.js";
+import { isOpenAiTool } from "./ai-tool-policy.js";
 import { hostLacksAvx } from "./cpu-features.js";
 import { getQueuedBundleIds } from "./feature-install-queue.js";
 import { logger } from "./logger.js";
@@ -278,6 +280,7 @@ export function invalidateCache(): void {
 // ── Install status queries ──────────────────────────────────────────────
 
 export function isFeatureInstalled(bundleId: string): boolean {
+  if (env.AI_PROVIDER === "openai") return false;
   if (bundleId === "ocr") {
     return getOcrRuntimeCapability({ aiDataDir: AI_DIR }).available;
   }
@@ -286,6 +289,7 @@ export function isFeatureInstalled(bundleId: string): boolean {
 }
 
 export function isToolInstalled(toolId: string): boolean {
+  if (isOpenAiTool(toolId)) return true;
   const required = getRequiredBundlesForTool(toolId);
   if (required.length === 0) return true;
   return required.every((bundleId) => isFeatureInstalled(bundleId));
@@ -298,6 +302,7 @@ export function isToolInstalled(toolId: string): boolean {
  * exactly which feature to install next.
  */
 export function getFirstMissingBundleForTool(toolId: string): string | null {
+  if (isOpenAiTool(toolId)) return null;
   for (const bundleId of getRequiredBundlesForTool(toolId)) {
     if (!isFeatureInstalled(bundleId)) return bundleId;
   }

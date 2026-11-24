@@ -19,6 +19,7 @@ import { NO_SPEECH_DETECTED_WARNING } from "../../lib/empty-result-warnings.js";
 import { formatZodErrors } from "../../lib/errors.js";
 import { isToolInstalled } from "../../lib/feature-status.js";
 import { multipartFailure } from "../../lib/multipart-parts.js";
+import { transcribeWithOpenAi } from "../../lib/openai-transcription.js";
 import { validateStagedMedia } from "../../lib/staged-media-validation.js";
 import { type TranscriptSegment, toSrt, toVtt } from "../../lib/subtitle-format.js";
 import {
@@ -29,6 +30,7 @@ import {
 import { receiveUpload } from "../../lib/upload-stream.js";
 import { getAuthUser } from "../../plugins/auth.js";
 import { buildAsyncAcceptedPayload } from "../async-response.js";
+import type { ToolProcessCtx } from "../tool-factory.js";
 
 const settingsSchema = z.object({
   language: z
@@ -36,6 +38,8 @@ const settingsSchema = z.object({
     .default("auto"),
   outputFormat: z.enum(["txt", "srt", "vtt"]).default("txt"),
 });
+
+const jobSettingsSchema = settingsSchema.extend({ provider: z.literal("openai").optional() });
 
 const OUTPUT_CONTENT_TYPES: Record<string, string> = {
   txt: "text/plain",
@@ -45,7 +49,7 @@ const OUTPUT_CONTENT_TYPES: Record<string, string> = {
 
 // -- AI job handler (runs inside the BullMQ worker) --
 registerAiJobHandler("transcribe-audio", async (input, data, ctx) => {
-  const settings = settingsSchema.parse(data.settings);
+  const settings = jobSettingsSchema.parse(data.settings);
 
   ctx.report(5, "Preparing audio");
 
@@ -54,23 +58,18 @@ registerAiJobHandler("transcribe-audio", async (input, data, ctx) => {
   const audioPath = join(audioDir, data.filename);
   await writeFile(audioPath, input);
 
-  // faster-whisper decodes with PyAV, which rejects files the ffmpeg CLI plays
-  // fine (a zero-length Vorbis packet, #4980), so whisper only ever sees a
-  // 16 kHz mono WAV that ffmpeg wrote. It sits outside audioDir so an upload
-  // named audio-16k.wav can't be its own output.
-  const wavPath = join(ctx.scratchDir, "audio-16k.wav");
-  await runFfmpeg(
-    ["-i", audioPath, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", wavPath],
-    { timeoutMs: 10 * 60_000, signal: ctx.signal },
-  );
-
-  ctx.report(10, "Transcribing audio");
-
-  const result = await transcribeAudio(
-    wavPath,
-    { language: settings.language, signal: ctx.signal, toolId: "transcribe-audio" },
-    (percent, stage) => ctx.report(percent, stage),
-  );
+  const result =
+    settings.provider === "openai"
+      ? await transcribeWithOpenAi(
+          audioPath,
+          {
+            language: settings.language,
+            timed: settings.outputFormat !== "txt",
+            startProgress: 10,
+          },
+          ctx,
+        )
+      : await transcribeLocally(audioPath, settings.language, ctx);
 
   // Adapt bridge segments to the api-side TranscriptSegment shape (identical structure).
   const segments: TranscriptSegment[] = result.segments.map((seg) => ({
@@ -104,6 +103,26 @@ registerAiJobHandler("transcribe-audio", async (input, data, ctx) => {
   };
 });
 
+async function transcribeLocally(audioPath: string, language: string, ctx: ToolProcessCtx) {
+  // faster-whisper decodes with PyAV, which rejects files the ffmpeg CLI plays
+  // fine (a zero-length Vorbis packet, #4980), so whisper only ever sees a
+  // 16 kHz mono WAV that ffmpeg wrote. It sits outside audioDir so an upload
+  // named audio-16k.wav can't be its own output.
+  const wavPath = join(ctx.scratchDir, "audio-16k.wav");
+  await runFfmpeg(
+    ["-i", audioPath, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", wavPath],
+    { timeoutMs: 10 * 60_000, signal: ctx.signal },
+  );
+
+  ctx.report(10, "Transcribing audio");
+
+  return transcribeAudio(
+    wavPath,
+    { language, signal: ctx.signal, toolId: "transcribe-audio" },
+    (percent, stage) => ctx.report(percent, stage),
+  );
+}
+
 export function registerTranscribeAudio(app: FastifyInstance) {
   app.post(
     "/api/v1/tools/audio/transcribe-audio",
@@ -120,6 +139,7 @@ export function registerTranscribeAudio(app: FastifyInstance) {
         });
       }
 
+      const provider = process.env.AI_PROVIDER === "openai" ? "openai" : undefined;
       const userId = getAuthUser(request)?.id ?? null;
       const jobId = randomUUID();
       let filename = "audio";
@@ -212,7 +232,7 @@ export function registerTranscribeAudio(app: FastifyInstance) {
           pool: "ai",
           inputRefs: [inputKey],
           filename,
-          settings,
+          settings: { ...settings, ...(provider && { provider }) },
           clientJobId: clientJobId ?? undefined,
           fileId: fileId ?? undefined,
           saveMode,

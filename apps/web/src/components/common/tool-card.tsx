@@ -14,6 +14,7 @@ import { getSectionName, getToolDescription, getToolName } from "@/lib/tool-i18n
 import { cn } from "@/lib/utils";
 import { useFeaturesStore } from "@/stores/features-store";
 import { usePinnedToolsStore } from "@/stores/pinned-tools-store";
+import { useSettingsStore } from "@/stores/settings-store";
 
 interface ToolCardProps {
   tool: Tool;
@@ -80,7 +81,9 @@ export function ToolCard({
   const IconComponent =
     (ICON_MAP[tool.icon] as React.ComponentType<{ className?: string }>) ?? FileImage;
 
-  const isAiTool = (PYTHON_SIDECAR_TOOLS as readonly string[]).includes(tool.id);
+  const aiProvider = useSettingsStore((s) => s.aiProvider);
+  const isAiTool =
+    aiProvider === "local" && (PYTHON_SIDECAR_TOOLS as readonly string[]).includes(tool.id);
   const bundles = useFeaturesStore((s) => s.bundles);
   const installing = useFeaturesStore((s) => s.installing);
   const queued = useFeaturesStore((s) => s.queued);

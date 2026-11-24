@@ -2,6 +2,7 @@ import { TOOLS } from "@snapotter/shared";
 import { eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { db, schema } from "../../db/index.js";
+import { deploymentDisabledTools } from "../../lib/ai-tool-policy.js";
 import { logger } from "../../lib/logger.js";
 import { registerColorAdjustments } from "./adjust-colors.js";
 import { registerAiCanvasExpand } from "./ai-canvas-expand.js";
@@ -232,7 +233,11 @@ export async function registerToolRoutes(app: FastifyInstance): Promise<void> {
   const experimentalToolIds = TOOLS.filter((t) => t.experimental).map((t) => t.id);
 
   // Build skip set
-  const skipTools = new Set([...disabledTools, ...(enableExperimental ? [] : experimentalToolIds)]);
+  const skipTools = new Set([
+    ...deploymentDisabledTools,
+    ...disabledTools,
+    ...(enableExperimental ? [] : experimentalToolIds),
+  ]);
 
   const toolRegistrations: Array<{
     id: string;
@@ -437,7 +442,7 @@ export async function registerToolRoutes(app: FastifyInstance): Promise<void> {
   let skipped = 0;
   for (const { id, register } of toolRegistrations) {
     if (skipTools.has(id)) {
-      app.log.info(`Skipping disabled/experimental tool: ${id}`);
+      app.log.info(`Skipping unavailable tool: ${id}`);
       skipped++;
       continue;
     }

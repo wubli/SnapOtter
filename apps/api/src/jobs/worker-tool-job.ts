@@ -17,6 +17,7 @@ import { type Job, UnrecoverableError } from "bullmq";
 import { eq } from "drizzle-orm";
 import { env } from "../config.js";
 import { db, schema } from "../db/index.js";
+import { isDeploymentToolDisabled } from "../lib/ai-tool-policy.js";
 import { trackEvent } from "../lib/analytics.js";
 import { analyticsEnabled } from "../lib/analytics-gate.js";
 import { isBinarySpawnFailure } from "../lib/binary-overrides.js";
@@ -230,6 +231,13 @@ export async function processToolJob(
     let originalSize: number | undefined;
 
     try {
+      if (isDeploymentToolDisabled(data.toolId)) {
+        throw new SafeError("This tool is unavailable in this deployment", {
+          kind: "operational",
+          code: "TOOL_UNAVAILABLE",
+          statusCode: 404,
+        });
+      }
       await mkdir(scratchDir, { recursive: true });
 
       // Cooperative window cancel (#886): a cancel that landed before this

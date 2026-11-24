@@ -6,6 +6,7 @@ import { bundleName } from "@/lib/bundle-i18n";
 import { getTemplateDescription, getTemplateName } from "@/lib/template-i18n";
 import { getToolName } from "@/lib/tool-i18n";
 import { useFeaturesStore } from "@/stores/features-store";
+import { useSettingsStore } from "@/stores/settings-store";
 
 interface TemplateCardProps {
   template: PipelineTemplate;
@@ -17,7 +18,11 @@ export function TemplateCard({ template, onUse }: TemplateCardProps) {
   const bundles = useFeaturesStore((s) => s.bundles);
   const installing = useFeaturesStore((s) => s.installing);
 
-  const requiredBundles = useMemo(() => templateRequiredBundles(template), [template]);
+  const aiProvider = useSettingsStore((s) => s.aiProvider);
+  const requiredBundles = useMemo(
+    () => (aiProvider === "local" ? templateRequiredBundles(template) : []),
+    [aiProvider, template],
+  );
 
   const name = getTemplateName(t, template.id, template.id);
   const description = getTemplateDescription(t, template.id, "");

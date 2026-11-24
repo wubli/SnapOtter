@@ -1,6 +1,7 @@
 import { NO_TEXT_LAYER_CODE, TOOLS } from "@snapotter/shared";
 import { useNavigate } from "react-router";
 import { type FileEntry, useFileStore } from "@/stores/file-store";
+import { useSettingsStore } from "@/stores/settings-store";
 
 const OCR_TOOL = TOOLS.find((tool) => tool.id === "ocr-pdf");
 
@@ -64,11 +65,12 @@ function OcrHandoffButton({
 export function ScannedPdfOcrHandoff({ hint, label, testId }: ScannedPdfOcrHandoffProps) {
   const { error, errorCode } = useFileStore();
   const handoffToOcr = useOcrHandoff();
+  const ocrUnavailable = useSettingsStore((s) => s.deploymentDisabledTools.includes("ocr-pdf"));
 
   // A batch only carries the code when every file failed on it (the server
   // withholds it from a mixed batch), so the handoff never drags readable PDFs
   // into OCR (#4143).
-  if (!OCR_TOOL || !error || errorCode !== NO_TEXT_LAYER_CODE) return null;
+  if (ocrUnavailable || !OCR_TOOL || !error || errorCode !== NO_TEXT_LAYER_CODE) return null;
 
   return (
     <div className="space-y-2">
@@ -88,8 +90,16 @@ export function ScannedPdfOcrHandoff({ hint, label, testId }: ScannedPdfOcrHando
 export function UnreadablePagesOcrHandoff({ label, testId }: { label: string; testId: string }) {
   const { currentEntry, processing } = useFileStore();
   const handoffToOcr = useOcrHandoff();
+  const ocrUnavailable = useSettingsStore((s) => s.deploymentDisabledTools.includes("ocr-pdf"));
 
-  if (!OCR_TOOL || processing || !currentEntry || !hasUnreadablePages(currentEntry)) return null;
+  if (
+    ocrUnavailable ||
+    !OCR_TOOL ||
+    processing ||
+    !currentEntry ||
+    !hasUnreadablePages(currentEntry)
+  )
+    return null;
 
   return (
     <OcrHandoffButton

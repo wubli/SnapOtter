@@ -35,6 +35,9 @@ export function AppLayout({ children, breadcrumb, navVariant }: AppLayoutProps) 
   // renders normally instead of showing the disabled message. fetch() is a
   // no-op once loaded, so this is cheap on subsequent navigations.
   const fetchSettings = useSettingsStore((s) => s.fetch);
+  const usesOpenAiTranscription = useSettingsStore(
+    (s) => s.aiProvider === "openai" && !s.deploymentDisabledTools.includes("transcribe-audio"),
+  );
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
@@ -63,6 +66,11 @@ export function AppLayout({ children, breadcrumb, navVariant }: AppLayoutProps) 
         }}
         onSettingsClick={() => setSettingsOpen(true)}
       />
+      {usesOpenAiTranscription && (
+        <p className="shrink-0 bg-muted px-4 py-2 text-center text-xs text-muted-foreground">
+          Transcribe Audio and Auto Subtitles send audio to OpenAI for transcription.
+        </p>
+      )}
 
       <UpdateNotice />
 

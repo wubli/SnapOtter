@@ -406,7 +406,13 @@ function ToolPageContent({
     [section, toolId],
   );
   const registryEntry = useMemo(() => (tool ? getToolRegistryEntry(tool.id) : undefined), [tool]);
-  const isAiTool = toolId ? (PYTHON_SIDECAR_TOOLS as readonly string[]).includes(toolId) : false;
+  const aiProvider = useSettingsStore((s) => s.aiProvider);
+  const deploymentDisabled = useSettingsStore((s) =>
+    toolId ? s.deploymentDisabledTools.includes(toolId) : false,
+  );
+  const isAiTool =
+    aiProvider === "local" &&
+    Boolean(toolId && (PYTHON_SIDECAR_TOOLS as readonly string[]).includes(toolId));
   const featuresLoaded = useFeaturesStore((s) => s.loaded);
   const featureBundles = useFeaturesStore((s) => s.bundles);
   const fetchFeatures = useFeaturesStore((s) => s.fetch);
@@ -836,6 +842,7 @@ function ToolPageContent({
       registryEntry &&
       registryEntry.displayMode !== "no-dropzone" &&
       !disabledByAdmin &&
+      !deploymentDisabled &&
       (!isAiTool || (featuresLoaded && (toolInstalled || !featureBundle))),
   );
   useEffect(() => {
@@ -905,7 +912,7 @@ function ToolPageContent({
     );
   }
 
-  if (!tool || !registryEntry) {
+  if (!tool || !registryEntry || deploymentDisabled) {
     return (
       <AppLayout>
         <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">

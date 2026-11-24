@@ -78,6 +78,8 @@ export async function configRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({ defaultLocale: row.value });
   });
 
+  app.get("/api/v1/config/ai", async () => ({ aiProvider: env.AI_PROVIDER }));
+
   // Public config endpoint (for frontend to know if auth is required)
   app.get("/api/v1/config/auth", async (request) => {
     const config: Record<string, unknown> = {

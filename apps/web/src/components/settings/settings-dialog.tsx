@@ -187,12 +187,14 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   const { t } = useTranslation();
   const isMobile = useMobile();
   const NAV_ITEMS = useNavItems();
+  const aiProvider = useSettingsStore((s) => s.aiProvider);
   const dialogRef = useRef<HTMLDivElement>(null);
   const mobileDialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, open && !isMobile);
   useFocusTrap(mobileDialogRef, open && isMobile);
 
   const visibleNavItems = NAV_ITEMS.filter((item) => {
+    if (item.id === "ai-features" && aiProvider === "openai") return false;
     const permitted =
       (!item.requiredPermission || hasPermission(item.requiredPermission)) &&
       (!item.requiredPermissions || item.requiredPermissions.every((p) => hasPermission(p))) &&
@@ -4181,6 +4183,7 @@ export function AuditLogSection() {
 export function ToolsSection() {
   const { t } = useTranslation();
   const [disabledTools, setDisabledTools] = useState<string[]>([]);
+  const deploymentDisabledTools = useSettingsStore((s) => s.deploymentDisabledTools);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -4199,12 +4202,13 @@ export function ToolsSection() {
   }, []);
 
   const filteredTools = useMemo(() => {
-    if (!search) return TOOLS;
+    const tools = TOOLS.filter((tool) => !deploymentDisabledTools.includes(tool.id));
+    if (!search) return tools;
     const q = search.toLowerCase();
-    return TOOLS.filter(
+    return tools.filter(
       (t) => t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q),
     );
-  }, [search]);
+  }, [search, deploymentDisabledTools]);
 
   const groupedTools = useMemo(() => {
     const groups = new Map<string, typeof TOOLS>();

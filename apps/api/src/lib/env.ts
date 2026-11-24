@@ -193,6 +193,8 @@ const envSchema = z
     // AI pool runs at concurrency 1, so this stops one user from starving it.
     // 0 = unlimited. Batch/pipeline AI are bounded separately and not counted.
     MAX_AI_JOBS_PER_USER: z.coerce.number().default(5),
+    AI_PROVIDER: z.enum(["local", "openai"]).default("local"),
+    OPENAI_API_KEY: z.string().trim().default(""),
     // Optional per-process address-space cap (MB) for the native media/doc
     // engines (ffmpeg, ghostscript, qpdf, libreoffice, pandoc, pdfcpu). 0 =
     // disabled (the container memory limit is the primary backstop). Not applied
