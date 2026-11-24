@@ -12,23 +12,24 @@ docker compose up -d --pull never
 
 Keep the project stopped until the script finishes. It checks free space, reads each Compose volume and the deployment configuration into compressed archives, compares each archive against its source, and verifies a SHA-256 manifest. It publishes the backup directory after those checks succeed. The source archive includes the pinned image references. Keep those exact images available in a registry or a separate image export.
 
-## Retrieve the November 24 recovery copy
+## Retrieve a November 24 recovery copy
 
-The private Cloud Storage bucket holds an encrypted tar file. Its passphrase is version 1 of the `snapotter-backup-passphrase` secret in `convertxx`. On a trusted Linux recovery machine with GnuPG and both read permissions, run the following in Bash. The destination must be new and have room for the encrypted file and the extracted archives.
+The private Cloud Storage bucket holds the original `recovery-20261124.tar.gpg` and the wake-enabled `recovery-wake-20261124.tar.gpg`. Both use version 1 of the `snapotter-backup-passphrase` secret in `convertxx`. On a trusted Linux recovery machine with GnuPG and both read permissions, run the following in Bash. The destination must be new and have room for the encrypted file and the extracted archives.
 
 ```bash
 set -euo pipefail
 umask 077
 mkdir -m 700 snapotter-recovery-20261124
 cd snapotter-recovery-20261124
+archive=recovery-wake-20261124.tar.gpg
 gcloud storage cp --project=convertxx \
-  gs://convertxx-snapotter-recovery-604983748882/recovery-20261124.tar.gpg .
+  "gs://convertxx-snapotter-recovery-604983748882/$archive" .
 keyfile=$(mktemp /dev/shm/snapotter-recovery.XXXXXXXX)
 trap 'unlink "$keyfile"' EXIT
 gcloud secrets versions access 1 --project=convertxx \
   --secret=snapotter-backup-passphrase --out-file="$keyfile"
 gpg --batch --pinentry-mode loopback --passphrase-file "$keyfile" \
-  --decrypt recovery-20261124.tar.gpg | tar -xf -
+  --decrypt "$archive" | tar -xf -
 sha256sum --check SHA256SUMS
 unlink "$keyfile"
 trap - EXIT
@@ -82,6 +83,8 @@ done <<< "$volume_list"
 ```
 
 PostgreSQL and Redis have no published ports. The database query and Redis ping verify that both restored services can read their state. Start Caddy and SnapOtter only when the restore should serve traffic and ports 80 and 443 are available. To resume an interrupted restore, use another fresh project name and directory.
+
+When returning the wake-enabled copy to production, restore the stack at `/opt/snapotter` and install the two systemd unit files from the [wake deployment guide](wake/README.md). Verify the protected origin and public gateway before enabling the idle timer. If replacing the VM, reapply the controller service account’s VM-level start permission and attach the reserved origin address.
 
 ## Rotate the OpenAI key
 
