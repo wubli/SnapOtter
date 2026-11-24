@@ -72,18 +72,14 @@ export function PrivacyPolicyPage() {
             <p>{t.privacyPolicy.overview.body}</p>
           </section>
 
-          <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">
-              {t.privacyPolicy.localProcessing.heading}
-            </h2>
-            {aiProvider === "local" && <p>{t.privacyPolicy.localProcessing.body}</p>}
-            {aiProvider === "openai" && (
-              <p>
-                SnapOtter runs standard conversions on this server. When you use Transcribe Audio or
-                Auto Subtitles, SnapOtter sends the audio to OpenAI for transcription.
-              </p>
-            )}
-          </section>
+          {aiProvider === "local" && (
+            <section>
+              <h2 className="text-lg font-semibold text-foreground mb-2">
+                {t.privacyPolicy.localProcessing.heading}
+              </h2>
+              <p>{t.privacyPolicy.localProcessing.body}</p>
+            </section>
+          )}
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-2">
@@ -111,18 +107,18 @@ export function PrivacyPolicyPage() {
             <p>{t.privacyPolicy.dataStorage.body}</p>
           </section>
 
-          <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">
-              {t.privacyPolicy.thirdParty.heading}
-            </h2>
-            {aiProvider === "local" && <p>{t.privacyPolicy.thirdParty.body}</p>}
-            {aiProvider === "openai" && (
+          {aiProvider && (
+            <section>
+              <h2 className="text-lg font-semibold text-foreground mb-2">
+                {t.privacyPolicy.thirdParty.heading}
+              </h2>
               <p>
-                OpenAI processes audio from transcription and subtitle jobs. PostHog and Sentry
-                provide anonymous analytics as described above.
+                {aiProvider === "openai"
+                  ? t.privacyPolicy.openAiTranscription
+                  : t.privacyPolicy.thirdParty.body}
               </p>
-            )}
-          </section>
+            </section>
+          )}
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-2">
@@ -131,18 +127,14 @@ export function PrivacyPolicyPage() {
             <p>{t.privacyPolicy.openSource.body}</p>
           </section>
 
-          <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">
-              {t.privacyPolicy.yourControl.heading}
-            </h2>
-            {aiProvider === "local" && <p>{t.privacyPolicy.yourControl.body}</p>}
-            {aiProvider === "openai" && (
-              <p>
-                The instance operator controls data stored on this server. OpenAI handles audio
-                submitted for transcription under its API data policies.
-              </p>
-            )}
-          </section>
+          {aiProvider === "local" && (
+            <section>
+              <h2 className="text-lg font-semibold text-foreground mb-2">
+                {t.privacyPolicy.yourControl.heading}
+              </h2>
+              <p>{t.privacyPolicy.yourControl.body}</p>
+            </section>
+          )}
         </div>
       </div>
     </main>

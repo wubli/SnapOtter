@@ -6501,6 +6501,8 @@ export const de: TranslationKeys = {
     },
   },
   privacyPolicy: {
+    openAiTranscription:
+      "Die Werkzeuge „Audio transkribieren“ und „Automatische Untertitel“ senden Audiodaten zur Transkription an OpenAI.",
     lastUpdated: "Zuletzt aktualisiert: 24. Juni 2026",
     overview: {
       heading: "Überblick",

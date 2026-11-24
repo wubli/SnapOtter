@@ -6451,6 +6451,8 @@ export const ptBR: TranslationKeys = {
     },
   },
   privacyPolicy: {
+    openAiTranscription:
+      "Transcrever áudio e Legendas automáticas enviam o áudio à OpenAI para transcrição.",
     lastUpdated: "Última atualização: 24 de junho de 2026",
     overview: {
       heading: "Visão geral",

@@ -6454,6 +6454,8 @@ export const it: TranslationKeys = {
     },
   },
   privacyPolicy: {
+    openAiTranscription:
+      "Trascrivi audio e Sottotitoli automatici inviano l’audio a OpenAI per la trascrizione.",
     lastUpdated: "Ultimo aggiornamento: 24 giugno 2026",
     overview: {
       heading: "Panoramica",

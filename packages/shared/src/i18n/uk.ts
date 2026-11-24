@@ -6437,6 +6437,8 @@ export const uk: TranslationKeys = {
     },
   },
   privacyPolicy: {
+    openAiTranscription:
+      "Інструменти транскрибування аудіо й автоматичних субтитрів надсилають аудіо в OpenAI для транскрибування.",
     lastUpdated: "Останнє оновлення: 24 червня 2026 р.",
     overview: {
       heading: "Огляд",

@@ -6382,6 +6382,8 @@ export const ja: TranslationKeys = {
     },
   },
   privacyPolicy: {
+    openAiTranscription:
+      "音声文字起こしと自動字幕は、文字起こしのために音声を OpenAI に送信します。",
     lastUpdated: "最終更新：2026年6月24日",
     overview: {
       heading: "概要",

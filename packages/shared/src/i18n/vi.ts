@@ -6402,6 +6402,8 @@ export const vi: TranslationKeys = {
     },
   },
   privacyPolicy: {
+    openAiTranscription:
+      "Công cụ chép lời âm thanh và tạo phụ đề tự động gửi âm thanh đến OpenAI để chép lời.",
     lastUpdated: "Cập nhật lần cuối: ngày 24 tháng 6 năm 2026",
     overview: {
       heading: "Tổng quan",

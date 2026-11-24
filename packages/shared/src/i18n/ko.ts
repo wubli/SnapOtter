@@ -6326,6 +6326,8 @@ export const ko: TranslationKeys = {
     },
   },
   privacyPolicy: {
+    openAiTranscription:
+      "오디오 받아쓰기 및 자동 자막 기능은 텍스트 변환을 위해 오디오를 OpenAI로 전송합니다.",
     lastUpdated: "최종 업데이트: 2026년 6월 24일",
     overview: {
       heading: "개요",

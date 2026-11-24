@@ -6298,6 +6298,7 @@ export const th: TranslationKeys = {
     },
   },
   privacyPolicy: {
+    openAiTranscription: "เครื่องมือถอดเสียงและคำบรรยายอัตโนมัติส่งเสียงไปยัง OpenAI เพื่อถอดเป็นข้อความ",
     lastUpdated: "อัปเดตล่าสุด: 24 มิถุนายน 2026",
     overview: {
       heading: "ภาพรวม",

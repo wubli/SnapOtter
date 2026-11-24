@@ -6358,6 +6358,7 @@ export const ar: TranslationKeys = {
     },
   },
   privacyPolicy: {
+    openAiTranscription: "ترسل أداتا نسخ الصوت والترجمة التلقائية الصوت إلى OpenAI لتحويله إلى نص.",
     lastUpdated: "آخر تحديث: 24 يونيو 2026",
     overview: {
       heading: "نظرة عامة",

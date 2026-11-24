@@ -6430,6 +6430,8 @@ export const tr: TranslationKeys = {
     },
   },
   privacyPolicy: {
+    openAiTranscription:
+      "Ses Yazıya Dökme ve Otomatik Altyazı araçları, sesi yazıya dökülmesi için OpenAI’a gönderir.",
     lastUpdated: "Son güncelleme: 24 Haziran 2026",
     overview: {
       heading: "Genel Bakış",

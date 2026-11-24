@@ -6424,6 +6424,8 @@ export const sv: TranslationKeys = {
     },
   },
   privacyPolicy: {
+    openAiTranscription:
+      "Ljudtranskribering och automatiska undertexter skickar ljud till OpenAI för transkribering.",
     lastUpdated: "Senast uppdaterad: 24 juni 2026",
     overview: {
       heading: "Översikt",

@@ -123,6 +123,7 @@ describe("web-wide i18n sweep (#909)", () => {
   });
 
   it("localizes the privacy policy prose and keeps the inline code tokens literal", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(Response.json({ aiProvider: "local" }));
     renderDe(
       <MemoryRouter>
         <PrivacyPolicyPage />
@@ -131,7 +132,7 @@ describe("web-wide i18n sweep (#909)", () => {
 
     expect(await screen.findByText(de.privacyPolicy.overview.heading)).toBeInTheDocument();
     expect(screen.getByText(de.privacyPolicy.overview.body)).toBeInTheDocument();
-    expect(screen.getByText(de.privacyPolicy.yourControl.body)).toBeInTheDocument();
+    expect(await screen.findByText(de.privacyPolicy.yourControl.body)).toBeInTheDocument();
     expect(screen.queryByText(/self-hosted, open-source file processing/)).not.toBeInTheDocument();
 
     // Identifiers stay untranslated, and no placeholder of any name survives
@@ -141,6 +142,18 @@ describe("web-wide i18n sweep (#909)", () => {
     const anyPlaceholder = (_: string, el: Element | null) =>
       /\{[a-z]+\}/i.test(el?.textContent ?? "");
     expect(screen.queryAllByText(anyPlaceholder)).toHaveLength(0);
+  });
+
+  it("discloses OpenAI transcription in the active locale", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(Response.json({ aiProvider: "openai" }));
+    renderDe(
+      <MemoryRouter>
+        <PrivacyPolicyPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(de.privacyPolicy.openAiTranscription)).toBeInTheDocument();
+    expect(screen.queryByText(de.privacyPolicy.localProcessing.body)).not.toBeInTheDocument();
   });
 });
 

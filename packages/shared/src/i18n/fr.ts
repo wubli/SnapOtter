@@ -6478,6 +6478,8 @@ export const fr: TranslationKeys = {
     },
   },
   privacyPolicy: {
+    openAiTranscription:
+      "Transcrire l’audio et Sous-titres automatiques envoient l’audio à OpenAI pour le transcrire.",
     lastUpdated: "Dernière mise à jour : 24 juin 2026",
     overview: {
       heading: "Vue d'ensemble",

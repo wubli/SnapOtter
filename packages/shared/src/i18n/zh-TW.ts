@@ -6023,6 +6023,7 @@ export const zhTW: TranslationKeys = {
     },
   },
   privacyPolicy: {
+    openAiTranscription: "音訊轉錄和自動字幕工具會將音訊傳送至 OpenAI 進行轉錄。",
     lastUpdated: "最後更新：2026 年 6 月 24 日",
     overview: {
       heading: "總覽",

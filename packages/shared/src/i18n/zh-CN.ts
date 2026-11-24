@@ -6021,6 +6021,7 @@ export const zhCN: TranslationKeys = {
     },
   },
   privacyPolicy: {
+    openAiTranscription: "音频转写和自动字幕工具会将音频发送至 OpenAI 进行转写。",
     lastUpdated: "最后更新：2026 年 6 月 24 日",
     overview: {
       heading: "概述",

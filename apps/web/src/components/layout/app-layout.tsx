@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "@/contexts/i18n-context";
 import { useMobile } from "@/hooks/use-mobile";
 import { trackFeedbackPromptDismissed, trackFeedbackPromptShown } from "@/lib/feedback";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children, breadcrumb, navVariant }: AppLayoutProps) {
+  const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -68,7 +70,7 @@ export function AppLayout({ children, breadcrumb, navVariant }: AppLayoutProps) 
       />
       {usesOpenAiTranscription && (
         <p className="shrink-0 bg-muted px-4 py-2 text-center text-xs text-muted-foreground">
-          Transcribe Audio and Auto Subtitles send audio to OpenAI for transcription.
+          {t.privacyPolicy.openAiTranscription}
         </p>
       )}
 

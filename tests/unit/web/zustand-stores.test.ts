@@ -2641,19 +2641,14 @@ describe("useSettingsStore", () => {
 
   it("loads public tool availability when the user's role cannot read settings", async () => {
     mockApiGet.mockRejectedValueOnce(new Error("Forbidden"));
-    const fallback = vi.fn(async () =>
+    fetchMock.mockResolvedValueOnce(
       Response.json({ aiProvider: "openai", deploymentDisabledTools: ["ocr", "ocr-pdf"] }),
     );
-    vi.stubGlobal("fetch", fallback);
-    try {
-      await useSettingsStore.getState().fetch();
+    await useSettingsStore.getState().fetch();
 
-      expect(fallback).toHaveBeenCalledWith("/api/v1/config/ai");
-      expect(useSettingsStore.getState().aiProvider).toBe("openai");
-      expect(useSettingsStore.getState().deploymentDisabledTools).toEqual(["ocr", "ocr-pdf"]);
-    } finally {
-      vi.unstubAllGlobals();
-    }
+    expect(fetchMock).toHaveBeenLastCalledWith("/api/v1/config/ai");
+    expect(useSettingsStore.getState().aiProvider).toBe("openai");
+    expect(useSettingsStore.getState().deploymentDisabledTools).toEqual(["ocr", "ocr-pdf"]);
   });
 
   it("fetch applies server default theme when no user preference", async () => {

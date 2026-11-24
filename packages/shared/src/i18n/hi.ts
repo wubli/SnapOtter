@@ -6137,6 +6137,8 @@ export const hi: TranslationKeys = {
     },
   },
   privacyPolicy: {
+    openAiTranscription:
+      "ऑडियो ट्रांसक्राइब और ऑटो सबटाइटल टूल ऑडियो को टेक्स्ट में बदलने के लिए OpenAI को भेजते हैं।",
     lastUpdated: "अंतिम अपडेट: 24 जून 2026",
     overview: {
       heading: "अवलोकन",

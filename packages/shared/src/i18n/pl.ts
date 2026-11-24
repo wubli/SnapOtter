@@ -6451,6 +6451,8 @@ export const pl: TranslationKeys = {
     },
   },
   privacyPolicy: {
+    openAiTranscription:
+      "Transkrypcja audio i automatyczne napisy wysyłają dźwięk do OpenAI w celu transkrypcji.",
     lastUpdated: "Ostatnia aktualizacja: 24 czerwca 2026",
     overview: {
       heading: "Przegląd",

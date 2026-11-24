@@ -6439,6 +6439,8 @@ export const ru: TranslationKeys = {
     },
   },
   privacyPolicy: {
+    openAiTranscription:
+      "Инструменты расшифровки аудио и создания автоматических субтитров отправляют звук в OpenAI для расшифровки.",
     lastUpdated: "Последнее обновление: 24 июня 2026 г.",
     overview: {
       heading: "Обзор",

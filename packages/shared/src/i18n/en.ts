@@ -6337,6 +6337,8 @@ export const en = {
     },
   },
   privacyPolicy: {
+    openAiTranscription:
+      "Transcribe Audio and Auto Subtitles send audio to OpenAI for transcription.",
     lastUpdated: "Last updated: June 24, 2026",
     overview: {
       heading: "Overview",

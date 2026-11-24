@@ -6459,6 +6459,8 @@ export const nl: TranslationKeys = {
     },
   },
   privacyPolicy: {
+    openAiTranscription:
+      "Audio transcriberen en Automatische ondertitels sturen audio naar OpenAI voor transcriptie.",
     lastUpdated: "Laatst bijgewerkt: 24 juni 2026",
     overview: {
       heading: "Overzicht",

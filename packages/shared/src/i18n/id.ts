@@ -6425,6 +6425,8 @@ export const id: TranslationKeys = {
     },
   },
   privacyPolicy: {
+    openAiTranscription:
+      "Transkripsi Audio dan Subtitle Otomatis mengirim audio ke OpenAI untuk ditranskripsikan.",
     lastUpdated: "Terakhir diperbarui: 24 Juni 2026",
     overview: {
       heading: "Ikhtisar",
