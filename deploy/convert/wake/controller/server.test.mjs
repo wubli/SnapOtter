@@ -14,7 +14,10 @@ async function listen(t, upstream, now) {
     fetchImpl: async (url, { headers, method, redirect, signal }) => {
       assert.equal(redirect, "error");
       assert.ok(signal instanceof AbortSignal);
-      if (url === "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token") {
+      if (
+        url ===
+        "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token"
+      ) {
         assert.deepEqual(headers, { "Metadata-Flavor": "Google" });
         assert.equal(method, undefined);
         return Response.json({ access_token: "test-compute-token" });
@@ -32,16 +35,19 @@ async function listen(t, upstream, now) {
   await once(server, "listening");
   t.after(() => new Promise((resolve) => server.close(resolve)));
   const origin = `http://127.0.0.1:${server.address().port}`;
-  return (path = "/wake", options = {}) => fetch(origin + path, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    ...options,
-  });
+  return (path = "/wake", options = {}) =>
+    fetch(origin + path, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      ...options,
+    });
 }
 
 test("requires the wake path, POST, and the shared token", async (t) => {
   let calls = 0;
-  const request = await listen(t, () => { calls++; });
+  const request = await listen(t, () => {
+    calls++;
+  });
   assert.equal((await request("/wake?target=other")).status, 404);
   const method = await request("/wake", { method: "GET" });
   assert.equal(method.status, 405);
@@ -58,11 +64,15 @@ test("requires the wake path, POST, and the shared token", async (t) => {
 test("reports VM transitions and starts only a terminated VM", async (t) => {
   let status = "RUNNING";
   let starts = 0;
-  const request = await listen(t, (method) => {
-    if (method === "get") return Response.json({ status });
-    starts++;
-    return Response.json({ status: "PENDING" });
-  }, () => 0);
+  const request = await listen(
+    t,
+    (method) => {
+      if (method === "get") return Response.json({ status });
+      starts++;
+      return Response.json({ status: "PENDING" });
+    },
+    () => 0,
+  );
 
   for (const [vmStatus, expected, code] of [
     ["RUNNING", "running", 200],
@@ -113,12 +123,17 @@ test("reconciles a conflict with a concurrent start", async (t) => {
 test("retries ambiguous starts with the same request ID and expires stale acceptance", async (t) => {
   const requestIds = [];
   let now = 0;
-  const request = await listen(t, (method, id) => {
-    if (method === "get") return Response.json({ status: "TERMINATED" });
-    requestIds.push(id);
-    if (requestIds.length === 1) return new Response("confidential upstream error", { status: 503 });
-    return Response.json({ status: "PENDING" });
-  }, () => now);
+  const request = await listen(
+    t,
+    (method, id) => {
+      if (method === "get") return Response.json({ status: "TERMINATED" });
+      requestIds.push(id);
+      if (requestIds.length === 1)
+        return new Response("confidential upstream error", { status: 503 });
+      return Response.json({ status: "PENDING" });
+    },
+    () => now,
+  );
   const failure = await request();
   assert.equal(failure.status, 503);
   assert.equal(failure.headers.get("Retry-After"), "3");

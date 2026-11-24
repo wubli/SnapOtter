@@ -23,7 +23,7 @@ async function checkIdle(token) {
 
 async function parseResult(status, body, headers) {
   assert.ok(status === 200 || status === 202, `Conversion returned HTTP ${status}`);
-  let result = JSON.parse(body);
+  const result = JSON.parse(body);
   if (status === 200) return result;
 
   const jobUrl = `${origin}/api/v1/jobs/${encodeURIComponent(result.jobId)}`;
@@ -33,7 +33,10 @@ async function parseResult(status, body, headers) {
     assert.equal(response.status, 200, "Job check did not return HTTP 200");
     const job = await response.json();
     if (job.status === "completed") return job.result;
-    assert.ok(!["failed", "cancelled", "canceled"].includes(job.status), `Conversion ${job.status}`);
+    assert.ok(
+      !["failed", "cancelled", "canceled"].includes(job.status),
+      `Conversion ${job.status}`,
+    );
     await delay(250);
   }
   assert.fail("Conversion did not finish within 30 seconds");
@@ -56,20 +59,27 @@ async function main() {
   });
   assert.equal(login.status, 200, "Login failed");
   const session = await login.json();
-  assert.ok(!session.user.mustChangePassword, "Rotate the bootstrap password before the smoke test");
+  assert.ok(
+    !session.user.mustChangePassword,
+    "Rotate the bootstrap password before the smoke test",
+  );
   assert.ok(session.token, "Login did not return a session token");
   const headers = { Authorization: `Bearer ${session.token}` };
 
   const baseline = await checkIdle(token);
   assert.equal(baseline.draining, false, "Retry after the production drain finishes");
-  assert.notEqual(baseline.reason, "requests", "Retry when the origin has no other active requests");
+  assert.notEqual(
+    baseline.reason,
+    "requests",
+    "Retry when the origin has no other active requests",
+  );
 
   const boundary = randomUUID();
   const opening = Buffer.from(
     `--${boundary}\r\nContent-Disposition: form-data; name="settings"\r\n\r\n` +
-    `{"format":"jpg"}\r\n--${boundary}\r\n` +
-    'Content-Disposition: form-data; name="file"; filename="idle-smoke.png"\r\n' +
-    "Content-Type: image/png\r\n\r\n",
+      `{"format":"jpg"}\r\n--${boundary}\r\n` +
+      'Content-Disposition: form-data; name="file"; filename="idle-smoke.png"\r\n' +
+      "Content-Type: image/png\r\n\r\n",
   );
   const closing = Buffer.from(`\r\n--${boundary}--\r\n`);
   const upload = request(`${origin}/api/v1/tools/image/convert`, {

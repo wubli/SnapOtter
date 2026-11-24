@@ -93,12 +93,16 @@ export function createWakeServer({ token, fetchImpl = fetch, now = Date.now } = 
       startAttempt = { id: randomUUID(), expiresAt: now() + startGraceMs, accepted: false };
     }
     try {
-      const operation = await fetchJson(fetchImpl, `${instanceUrl}/start?requestId=${startAttempt.id}`, {
-        headers,
-        method: "POST",
-        timeoutMs: 3_000,
-        operation: "Compute instances.start",
-      });
+      const operation = await fetchJson(
+        fetchImpl,
+        `${instanceUrl}/start?requestId=${startAttempt.id}`,
+        {
+          headers,
+          method: "POST",
+          timeoutMs: 3_000,
+          operation: "Compute instances.start",
+        },
+      );
       if (operation?.error || !["PENDING", "RUNNING", "DONE"].includes(operation?.status)) {
         throw new Error("Compute instances.start: invalid or failed operation");
       }
@@ -142,7 +146,9 @@ export function createWakeServer({ token, fetchImpl = fetch, now = Date.now } = 
         console.error("Wake request failed:", error.message);
         return null;
       })
-      .finally(() => { inFlight = undefined; });
+      .finally(() => {
+        inFlight = undefined;
+      });
 
     const state = await inFlight;
     if (state === "running") return reply(response, 200, { state });
