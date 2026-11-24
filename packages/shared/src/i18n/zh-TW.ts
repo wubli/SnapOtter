@@ -5022,6 +5022,12 @@ export const zhTW: TranslationKeys = {
       ssoNeedsProvider: "若要啟用 SSO 強制執行，請先設定 OIDC 或 SAML 提供者。",
     },
     people: {
+      googleAccount: "Google 帳戶",
+      googleEmail: "Google 電子郵件地址",
+      googleAccountTaken: "這個使用者名稱或 Google 地址已有人使用。",
+      googleEmailInvalid: "請輸入有效的 Google 電子郵件地址。",
+      disableGoogleAccount: "停用 Google 存取權",
+      enableGoogleAccount: "啟用 Google 存取權",
       heading: "成員",
       description: "管理工作空間成員及其權限",
       userCount: "{count}位使用者",

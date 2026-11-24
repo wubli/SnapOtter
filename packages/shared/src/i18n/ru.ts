@@ -5379,6 +5379,12 @@ export const ru: TranslationKeys = {
         "Чтобы включить принудительный SSO, сначала настройте провайдера OIDC или SAML.",
     },
     people: {
+      googleAccount: "Аккаунт Google",
+      googleEmail: "Адрес электронной почты Google",
+      googleAccountTaken: "Это имя пользователя или адрес Google уже используется.",
+      googleEmailInvalid: "Введите действительный адрес электронной почты Google.",
+      disableGoogleAccount: "Отключить доступ через Google",
+      enableGoogleAccount: "Включить доступ через Google",
       heading: "Пользователи",
       description: "Управление участниками рабочего пространства и их правами",
       userCount: "{count} пользователь",

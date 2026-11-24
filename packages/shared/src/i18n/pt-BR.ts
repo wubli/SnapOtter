@@ -5383,6 +5383,12 @@ export const ptBR: TranslationKeys = {
       ssoNeedsProvider: "Para a imposição de SSO, configure primeiro um provedor OIDC ou SAML.",
     },
     people: {
+      googleAccount: "Conta do Google",
+      googleEmail: "Endereço de e-mail do Google",
+      googleAccountTaken: "Esse nome de usuário ou endereço do Google já está em uso.",
+      googleEmailInvalid: "Insira um endereço de e-mail válido do Google.",
+      disableGoogleAccount: "Desativar acesso pelo Google",
+      enableGoogleAccount: "Ativar acesso pelo Google",
       heading: "Pessoas",
       description: "Gerencie os membros do espaço de trabalho e suas permissões",
       userCount: "{count} usuário",

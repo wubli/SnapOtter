@@ -5359,6 +5359,12 @@ export const vi: TranslationKeys = {
       ssoNeedsProvider: "Để bắt buộc SSO, trước tiên hãy thiết lập nhà cung cấp OIDC hoặc SAML.",
     },
     people: {
+      googleAccount: "Tài khoản Google",
+      googleEmail: "Địa chỉ email Google",
+      googleAccountTaken: "Tên người dùng hoặc địa chỉ Google này đã được sử dụng.",
+      googleEmailInvalid: "Nhập địa chỉ email Google hợp lệ.",
+      disableGoogleAccount: "Tắt quyền truy cập qua Google",
+      enableGoogleAccount: "Bật quyền truy cập qua Google",
       heading: "Thành viên",
       description: "Quản lý thành viên không gian làm việc và quyền của họ",
       userCount: "{count} người dùng",

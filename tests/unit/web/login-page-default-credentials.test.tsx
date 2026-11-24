@@ -105,12 +105,12 @@ describe("useAuth defaultCredentialsActive", () => {
 });
 
 describe("login page processing disclosure", () => {
-  it("shows the OpenAI notice and no local-only rotation", async () => {
+  it("hides local-only rotation in an OpenAI deployment", async () => {
     respond({ authEnabled: true, aiProvider: "openai" }, 401);
     await renderLoginPage();
 
-    const notices = await screen.findAllByText(/send audio to OpenAI for transcription/);
-    expect(notices).toHaveLength(2);
+    await screen.findByLabelText(/username/i);
+    expect(screen.queryByText(/send audio to OpenAI/)).not.toBeInTheDocument();
     expect(screen.queryByTestId("login-rotating-phrase")).not.toBeInTheDocument();
   });
 

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { useTranslation } from "@/contexts/i18n-context";
 import { useMobile } from "@/hooks/use-mobile";
 import { trackFeedbackPromptDismissed, trackFeedbackPromptShown } from "@/lib/feedback";
 import { cn } from "@/lib/utils";
@@ -20,7 +19,6 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children, breadcrumb, navVariant }: AppLayoutProps) {
-  const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -37,9 +35,6 @@ export function AppLayout({ children, breadcrumb, navVariant }: AppLayoutProps) 
   // renders normally instead of showing the disabled message. fetch() is a
   // no-op once loaded, so this is cheap on subsequent navigations.
   const fetchSettings = useSettingsStore((s) => s.fetch);
-  const usesOpenAiTranscription = useSettingsStore(
-    (s) => s.aiProvider === "openai" && !s.deploymentDisabledTools.includes("transcribe-audio"),
-  );
   useEffect(() => {
     fetchSettings();
   }, [fetchSettings]);
@@ -68,11 +63,6 @@ export function AppLayout({ children, breadcrumb, navVariant }: AppLayoutProps) 
         }}
         onSettingsClick={() => setSettingsOpen(true)}
       />
-      {usesOpenAiTranscription && (
-        <p className="shrink-0 bg-muted px-4 py-2 text-center text-xs text-muted-foreground">
-          {t.privacyPolicy.openAiTranscription}
-        </p>
-      )}
 
       <UpdateNotice />
 

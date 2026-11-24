@@ -12,7 +12,7 @@ import {
   USERNAME_MIN_LENGTH,
   USERNAME_PATTERN,
 } from "@snapotter/shared";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { env } from "../config.js";
@@ -24,6 +24,7 @@ import { auditFromRequest, sanitizeAuditInput } from "../lib/audit.js";
 import { isEnterpriseFeatureEnabled } from "../lib/enterprise-feature.js";
 import { isHttpsUrl } from "../lib/env.js";
 import { reportError } from "../lib/error-report.js";
+import { googleWakeEmailSchema, isGoogleWakeManagementEnabled } from "../lib/google-wake-users.js";
 import { isHealthProbe } from "../lib/health-probe.js";
 import type { IdleAdmission } from "../lib/idle-admission.js";
 import { assertNotLastAdmin, LastAdminError } from "../lib/last-admin.js";
@@ -54,6 +55,8 @@ import {
   getPermissions,
   hasEffectivePermission,
   isDisabledRole,
+  isFullEffectiveAdmin,
+  requireFullAdmin,
   requirePermission,
 } from "../permissions.js";
 import type { ExternalMfaOutcome, MfaPolicy } from "./mfa.js";
@@ -352,16 +355,27 @@ export const changePasswordSchema = z.object({
   newPassword: z.string().min(1, "New password is required"),
 });
 
-export const registerSchema = z.object({
+const registerUserFields = z.object({
   username: z.string().min(1, "Username is required").max(255, "Username too long"),
-  password: z.string().min(1, "Password is required"),
   role: z.string().optional(),
   team: z.string().optional(),
 });
 
+export const registerSchema = z.union([
+  registerUserFields.extend({
+    password: z.string().min(1, "Password is required"),
+    googleEmail: z.undefined().optional(),
+  }),
+  registerUserFields.extend({
+    password: z.undefined().optional(),
+    googleEmail: googleWakeEmailSchema,
+  }),
+]);
+
 const updateUserSchema = z.object({
   role: z.string().optional(),
   team: z.string().optional(),
+  disabled: z.boolean().optional(),
 });
 
 export const resetPasswordSchema = z.object({
@@ -1329,6 +1343,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         team: schema.users.team,
         authProvider: schema.users.authProvider,
         email: schema.users.email,
+        googleWakeApproved: schema.users.googleWakeApproved,
         externalId: schema.users.externalId,
         passwordHash: schema.users.passwordHash,
         createdAt: schema.users.createdAt,
@@ -1348,11 +1363,14 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         team: teamNameById.get(u.team) ?? u.team,
         authProvider: u.authProvider ?? "local",
         email: u.email ?? null,
+        googleWakeApproved: u.googleWakeApproved,
+        isDisabled: isDisabledRole(u.role),
         hasLocalPassword: !!u.passwordHash,
         // Same rule as the session response: external_id alone could be SAML's.
         hasOidcLink: u.authProvider === "oidc" && !!u.externalId,
         createdAt: u.createdAt.toISOString(),
       })),
+      googleWakeManaged: isGoogleWakeManagementEnabled() && (await isFullEffectiveAdmin(admin)),
       maxUsers: env.MAX_USERS,
     });
   });
@@ -1368,7 +1386,10 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       const parsed = registerSchema.safeParse(request.body);
       if (!parsed.success) {
         return reply.status(400).send({
-          error: "Username and password are required",
+          error:
+            request.body && typeof request.body === "object" && "googleEmail" in request.body
+              ? "Provide a username and a valid Google email."
+              : "Username and password are required",
           code: "VALIDATION_ERROR",
         });
       }
@@ -1382,9 +1403,22 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         });
       }
 
-      const registerPwError = await validatePasswordStrength(body.password);
-      if (registerPwError) {
-        return reply.status(400).send(weakPasswordBody(registerPwError));
+      if (
+        body.googleEmail &&
+        (!isGoogleWakeManagementEnabled() ||
+          (body.role !== undefined && body.role !== "user") ||
+          (body.team !== undefined && body.team !== "Default"))
+      ) {
+        return reply.status(400).send({
+          error:
+            "Google approvals require a managed deployment and an ordinary user on the Default team.",
+          code: "VALIDATION_ERROR",
+        });
+      }
+      if (body.googleEmail && !(await requireFullAdmin(request, reply))) return reply;
+      if (body.password !== undefined) {
+        const registerPwError = await validatePasswordStrength(body.password);
+        if (registerPwError) return reply.status(400).send(weakPasswordBody(registerPwError));
       }
 
       const validBuiltinRoles = ["admin", "editor", "user"];
@@ -1462,7 +1496,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       const id = randomUUID();
       // Hash before the transaction: scrypt takes ~100ms and must not extend
       // the user-limit lock window.
-      const passwordHash = await hashPassword(normalizePassword(body.password));
+      const passwordHash =
+        body.password === undefined ? null : await hashPassword(normalizePassword(body.password));
 
       // The duplicate pre-check above can't close the username race (issue
       // #900), and a plain count check can't close the limit race: two
@@ -1502,12 +1537,25 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         if (!(await hasEffectivePermission(currentActor, "users:manage", tx))) {
           return "escalation-denied" as const;
         }
+        if (body.googleEmail && !(await isFullEffectiveAdmin(currentActor, tx)))
+          return "escalation-denied" as const;
         if (!roleExists) return "unknown-role" as const;
         if (!(await canAssignRole(currentActor, role, tx))) {
           return "escalation-denied" as const;
         }
         if (!teamExists) return "unknown-team" as const;
         if (await userLimitReached(tx)) return "limit" as const;
+        if (body.googleEmail) {
+          // The shared user limit lock may be disabled. Serialize the
+          // address check against all inserts and email updates regardless.
+          await tx.execute(sql`LOCK TABLE users IN SHARE ROW EXCLUSIVE MODE`);
+          const [emailOwner] = await tx
+            .select({ id: schema.users.id })
+            .from(schema.users)
+            .where(sql`lower(${schema.users.email}) = ${body.googleEmail}`)
+            .limit(1);
+          if (emailOwner) return "email-conflict" as const;
+        }
         return tx
           .insert(schema.users)
           .values({
@@ -1516,7 +1564,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
             passwordHash,
             role,
             team: teamId,
-            mustChangePassword: true,
+            mustChangePassword: body.googleEmail === undefined,
+            ...(body.googleEmail && { email: body.googleEmail, googleWakeApproved: true }),
           })
           .onConflictDoNothing({ target: schema.users.username });
       });
@@ -1542,6 +1591,13 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         });
       }
 
+      if (inserted === "email-conflict") {
+        return reply.status(409).send({
+          error: "Email address is already in use",
+          code: "CONFLICT",
+        });
+      }
+
       if (inserted === "limit") {
         return reply.status(403).send({
           error: `User limit reached (${env.MAX_USERS} max)`,
@@ -1562,6 +1618,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         newUserId: id,
         newUsername: body.username,
         role,
+        ...(body.googleEmail && { via: "google-approval-web" }),
       });
 
       return reply.status(201).send({
@@ -1569,6 +1626,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         username: body.username,
         role,
         team: teamName,
+        ...(body.googleEmail && { email: body.googleEmail, googleWakeApproved: true }),
       });
     },
   );
@@ -1606,6 +1664,19 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           code: "ESCALATION_DENIED",
         });
       }
+
+      if (
+        body.disabled !== undefined &&
+        (!user.googleWakeApproved || body.role !== undefined || body.team !== undefined)
+      ) {
+        return reply.status(400).send({
+          error:
+            "Google-approved users can be enabled or disabled and keep their ordinary role on the Default team.",
+          code: "VALIDATION_ERROR",
+        });
+      }
+
+      if (user.googleWakeApproved && !(await requireFullAdmin(request, reply))) return reply;
 
       const updates: { role?: string; team?: string; updatedAt: Date } = {
         updatedAt: new Date(),
@@ -1669,11 +1740,11 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       try {
         await db.transaction(async (tx) => {
           let roleExists = true;
-          if (updates.role && !validBuiltinRoles.includes(updates.role)) {
+          if (body.role !== undefined && !validBuiltinRoles.includes(body.role)) {
             const [lockedRole] = await tx
               .select({ id: schema.roles.id })
               .from(schema.roles)
-              .where(eq(schema.roles.name, updates.role))
+              .where(eq(schema.roles.name, body.role))
               .for("share");
             roleExists = Boolean(lockedRole);
           }
@@ -1688,7 +1759,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           }
           // Last admin protection, under the lock every admin removal shares (#2231).
           let lastAdminBlocked = false;
-          if (id !== admin.id && updates.role && updates.role !== "admin") {
+          if (id !== admin.id && (body.disabled === true || (body.role && body.role !== "admin"))) {
             try {
               await assertNotLastAdmin(tx, id);
             } catch (err) {
@@ -1701,7 +1772,10 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           }
 
           const [currentUser] = await tx
-            .select({ role: schema.users.role })
+            .select({
+              role: schema.users.role,
+              googleWakeApproved: schema.users.googleWakeApproved,
+            })
             .from(schema.users)
             .where(eq(schema.users.id, id))
             .for("no key update");
@@ -1731,11 +1805,36 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
             throw new EscalationDeniedError();
           }
 
+          if (currentUser.googleWakeApproved && !(await isFullEffectiveAdmin(currentActor, tx))) {
+            throw new EscalationDeniedError();
+          }
+
           if (!roleExists) {
             throw new Error("UNKNOWN_ROLE");
           }
 
-          if (updates.role && !(await canAssignRole(currentActor, updates.role, tx))) {
+          if (
+            body.role !== undefined &&
+            currentUser.googleWakeApproved &&
+            isDisabledRole(currentUser.role)
+          ) {
+            throw new EscalationDeniedError();
+          }
+          if (body.disabled !== undefined) {
+            if (!currentUser.googleWakeApproved) throw new EscalationDeniedError();
+            if (body.disabled && !isDisabledRole(currentUser.role)) {
+              updates.role = `disabled:${currentUser.role}`;
+            } else if (!body.disabled && currentUser.role.startsWith("disabled:")) {
+              updates.role = currentUser.role.slice("disabled:".length);
+            } else if (!body.disabled && currentUser.role === "disabled") {
+              throw new EscalationDeniedError();
+            }
+          }
+          if (
+            updates.role &&
+            !isDisabledRole(updates.role) &&
+            !(await canAssignRole(currentActor, updates.role, tx))
+          ) {
             throw new EscalationDeniedError();
           }
 
@@ -1966,6 +2065,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         });
       }
 
+      if (user.googleWakeApproved && !(await requireFullAdmin(request, reply))) return reply;
+
       // Loaded here rather than at the top: it reaches the preview route and the
       // logger, which the auth plugin otherwise has no need to pull in.
       const { deleteLibraryFileStorage } = await import("../lib/library-cleanup.js");
@@ -1988,7 +2089,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
           .from(schema.users)
           .where(eq(schema.users.id, admin.id));
         const [currentUser] = await tx
-          .select({ role: schema.users.role })
+          .select({ role: schema.users.role, googleWakeApproved: schema.users.googleWakeApproved })
           .from(schema.users)
           .where(eq(schema.users.id, id));
 
@@ -2007,6 +2108,10 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
         }
 
         if (!(await canManageTargetRole(currentActor, currentUser.role, tx))) {
+          throw new EscalationDeniedError();
+        }
+
+        if (currentUser.googleWakeApproved && !(await isFullEffectiveAdmin(currentActor, tx))) {
           throw new EscalationDeniedError();
         }
 

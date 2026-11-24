@@ -5388,6 +5388,12 @@ export const it: TranslationKeys = {
       ssoNeedsProvider: "Per l'applicazione SSO devi prima configurare un provider OIDC o SAML.",
     },
     people: {
+      googleAccount: "Account Google",
+      googleEmail: "Indirizzo email Google",
+      googleAccountTaken: "Questo nome utente o indirizzo Google è già in uso.",
+      googleEmailInvalid: "Inserisci un indirizzo email Google valido.",
+      disableGoogleAccount: "Disattiva l’accesso con Google",
+      enableGoogleAccount: "Attiva l’accesso con Google",
       heading: "Persone",
       description: "Gestisci i membri dell'area di lavoro e i loro permessi",
       userCount: "{count} utente",

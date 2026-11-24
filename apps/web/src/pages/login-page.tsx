@@ -962,11 +962,6 @@ export function LoginPage() {
               )}
             </>
           )}
-          {!authLoading && aiProvider === "openai" && (
-            <p className="text-sm text-muted-foreground lg:hidden">
-              {t.privacyPolicy.openAiTranscription}
-            </p>
-          )}
           <div className="pt-2">
             <LanguageSelector />
           </div>
@@ -980,9 +975,6 @@ export function LoginPage() {
             <p className="text-xl font-medium h-8" data-testid="login-rotating-phrase">
               <RotatingPhrase />
             </p>
-          )}
-          {!authLoading && aiProvider === "openai" && (
-            <p className="text-xl">{t.privacyPolicy.openAiTranscription}</p>
           )}
         </div>
       </div>

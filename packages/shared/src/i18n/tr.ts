@@ -5379,6 +5379,12 @@ export const tr: TranslationKeys = {
         "SSO zorunluluğu için önce bir OIDC veya SAML sağlayıcısı yapılandırılmalıdır.",
     },
     people: {
+      googleAccount: "Google hesabı",
+      googleEmail: "Google e-posta adresi",
+      googleAccountTaken: "Bu kullanıcı adı veya Google adresi zaten kullanılıyor.",
+      googleEmailInvalid: "Geçerli bir Google e-posta adresi girin.",
+      disableGoogleAccount: "Google erişimini kapat",
+      enableGoogleAccount: "Google erişimini aç",
       heading: "Kişiler",
       description: "Çalışma alanı üyelerini ve izinlerini yönetin",
       userCount: "{count} kullanıcı",

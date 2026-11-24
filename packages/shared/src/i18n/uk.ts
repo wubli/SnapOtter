@@ -5378,6 +5378,12 @@ export const uk: TranslationKeys = {
       ssoNeedsProvider: "Щоб увімкнути примусове SSO, спершу налаштуйте провайдера OIDC або SAML.",
     },
     people: {
+      googleAccount: "Обліковий запис Google",
+      googleEmail: "Електронна адреса Google",
+      googleAccountTaken: "Це ім’я користувача або адреса Google вже використовується.",
+      googleEmailInvalid: "Введіть дійсну електронну адресу Google.",
+      disableGoogleAccount: "Вимкнути доступ через Google",
+      enableGoogleAccount: "Увімкнути доступ через Google",
       heading: "Користувачі",
       description: "Керування учасниками робочого простору та їхніми правами",
       userCount: "{count} користувач",

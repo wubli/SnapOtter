@@ -5302,6 +5302,12 @@ export const en = {
       ssoNeedsProvider: "SSO enforcement needs an OIDC or SAML provider set up first.",
     },
     people: {
+      googleAccount: "Google account",
+      googleEmail: "Google email address",
+      googleAccountTaken: "That username or Google address is already in use.",
+      googleEmailInvalid: "Enter a valid Google email address.",
+      disableGoogleAccount: "Disable Google access",
+      enableGoogleAccount: "Enable Google access",
       heading: "People",
       description: "Manage workspace members and their permissions",
       userCount: "{count} user",

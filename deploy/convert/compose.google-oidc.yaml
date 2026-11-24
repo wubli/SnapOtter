@@ -4,6 +4,7 @@ services:
       - ./secrets/google-oidc-current/client.env
     environment:
       OIDC_ENABLED: "true"
+      GOOGLE_WAKE_USER_MANAGEMENT: "true"
       OIDC_ISSUER_URL: https://accounts.google.com
       OIDC_PROVIDER_NAME: Google
       OIDC_CLIENT_SECRET_FILE: /run/secrets/google_oidc_client_secret

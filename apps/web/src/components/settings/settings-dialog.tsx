@@ -395,6 +395,8 @@ interface UserEntry {
   email?: string;
   hasLocalPassword?: boolean;
   hasOidcLink?: boolean;
+  googleWakeApproved?: boolean;
+  isDisabled?: boolean;
   createdAt: string;
 }
 
@@ -1764,6 +1766,10 @@ export function PeopleSection() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
+  const [googleWakeManaged, setGoogleWakeManaged] = useState(false);
+  const [newGoogleAccount, setNewGoogleAccount] = useState(false);
+  const [newGoogleEmail, setNewGoogleEmail] = useState("");
+  const [updatingGoogleUser, setUpdatingGoogleUser] = useState(false);
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState("user");
@@ -1820,7 +1826,12 @@ export function PeopleSection() {
 
   const loadUsers = useCallback(async () => {
     try {
-      const data = await apiGet<{ users: UserEntry[]; maxUsers: number }>("/auth/users");
+      const data = await apiGet<{
+        users: UserEntry[];
+        maxUsers: number;
+        googleWakeManaged?: boolean;
+      }>("/auth/users");
+      setGoogleWakeManaged(data.googleWakeManaged === true);
       setUsers(data.users);
       setMaxUsers(data.maxUsers);
       setLoadFailed(false);
@@ -1866,9 +1877,13 @@ export function PeopleSection() {
     return () => window.removeEventListener("click", handler);
   }, [openMenuId]);
 
-  const filteredUsers = users.filter((u) =>
-    u.username.toLowerCase().includes(search.toLowerCase()),
+  const searchQuery = search.toLowerCase();
+  const filteredUsers = users.filter(
+    (u) =>
+      u.username.toLowerCase().includes(searchQuery) ||
+      (u.googleWakeApproved && u.email?.toLowerCase().includes(searchQuery)),
   );
+  const addGoogleAccount = googleWakeManaged && newGoogleAccount;
 
   const atLimit = maxUsers > 0 && users.length >= maxUsers;
 
@@ -1885,12 +1900,14 @@ export function PeopleSection() {
       }
       setAdding(true);
       try {
-        await apiPost("/auth/register", {
-          username: newUsername,
-          password: newPassword,
-          role: newRole,
-          team: newTeam,
-        });
+        await apiPost(
+          "/auth/register",
+          addGoogleAccount
+            ? { username: newUsername, googleEmail: newGoogleEmail.trim() }
+            : { username: newUsername, password: newPassword, role: newRole, team: newTeam },
+        );
+        setNewGoogleAccount(false);
+        setNewGoogleEmail("");
         setNewUsername("");
         setNewPassword("");
         setNewRole("user");
@@ -1909,7 +1926,9 @@ export function PeopleSection() {
         }
         // Every rule the password broke, since the server lists them (#2090).
         const passwordMessages =
-          err instanceof ApiError ? passwordErrorMessages(t, err.status, err.body) : [];
+          !addGoogleAccount && err instanceof ApiError
+            ? passwordErrorMessages(t, err.status, err.body)
+            : [];
         setAddErrors(
           passwordMessages.length > 0
             ? passwordMessages
@@ -1921,7 +1940,12 @@ export function PeopleSection() {
                     USER_LIMIT_REACHED: format(t.settings.people.userLimitReached, {
                       max: maxUsers,
                     }),
-                    CONFLICT: t.settings.people.usernameTaken,
+                    CONFLICT: addGoogleAccount
+                      ? t.settings.people.googleAccountTaken
+                      : t.settings.people.usernameTaken,
+                    ...(addGoogleAccount && {
+                      VALIDATION_ERROR: t.settings.people.googleEmailInvalid,
+                    }),
                     UNKNOWN_ROLE: t.settings.people.roleNotFound,
                     UNKNOWN_TEAM: t.settings.people.teamNotFound,
                     ESCALATION_DENIED: t.errors.escalationDenied,
@@ -1934,7 +1958,18 @@ export function PeopleSection() {
         setAdding(false);
       }
     },
-    [newUsername, newPassword, newRole, newTeam, maxUsers, loadUsers, t, later],
+    [
+      addGoogleAccount,
+      newGoogleEmail,
+      newUsername,
+      newPassword,
+      newRole,
+      newTeam,
+      maxUsers,
+      loadUsers,
+      t,
+      later,
+    ],
   );
 
   const handleDeleteUser = useCallback(
@@ -2007,6 +2042,36 @@ export function PeopleSection() {
     },
     [editingUser, editRole, editTeam, loadUsers, t, later],
   );
+
+  const handleGoogleAccess = async (user: UserEntry) => {
+    if (updatingGoogleUser) return;
+    setUpdatingGoogleUser(true);
+    setActionMsg(null);
+    later.cancel("actionMsg");
+    try {
+      await apiPut(`/auth/users/${user.id}`, { disabled: !user.isDisabled });
+      setActionMsg({ type: "success", text: t.settings.people.updateSuccess });
+      later(() => setActionMsg(null), 3000, "actionMsg");
+      await loadUsers();
+    } catch (err) {
+      setActionMsg({
+        type: "error",
+        text: apiErrorMessage(
+          t,
+          err,
+          {
+            SELF_DEMOTE: t.settings.people.cannotRemoveOwnAdmin,
+            LAST_ADMIN: t.settings.people.lastAdmin,
+            ESCALATION_DENIED: t.errors.escalationDenied,
+          },
+          t.settings.people.updateFailed,
+        ),
+      });
+    } finally {
+      setUpdatingGoogleUser(false);
+      setOpenMenuId(null);
+    }
+  };
 
   const handleResetPassword = useCallback(
     async (e: React.FormEvent) => {
@@ -2180,6 +2245,20 @@ export function PeopleSection() {
           <h4 className="text-sm font-medium text-foreground">
             {t.settings.people.newMemberHeading}
           </h4>
+          {googleWakeManaged && (
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                checked={newGoogleAccount}
+                onChange={(e) => {
+                  setNewGoogleAccount(e.target.checked);
+                  setAddErrors(null);
+                }}
+                className="rounded border-border accent-primary"
+              />
+              {t.settings.people.googleAccount}
+            </label>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label htmlFor="new-user-username" className="sr-only">
@@ -2200,98 +2279,123 @@ export function PeopleSection() {
                 className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground"
               />
             </div>
-            <div className="flex items-center gap-1.5">
-              <label htmlFor="new-user-password" className="sr-only">
-                {t.auth.password}
-              </label>
-              <input
-                id="new-user-password"
-                type={showGeneratedPw ? "text" : "password"}
-                value={newPassword}
-                onChange={(e) => {
-                  setNewPassword(e.target.value);
-                  setShowGeneratedPw(false);
-                  setPwCopy(null);
-                  setAddErrors(null);
-                }}
-                placeholder={t.auth.password}
-                required
-                aria-invalid={Boolean(addErrors) || undefined}
-                aria-describedby={addErrors ? "add-user-error" : undefined}
-                className={cn(
-                  "flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground",
-                  showGeneratedPw && "font-mono",
-                )}
-              />
-              {showGeneratedPw && (
-                <>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const ok = await copyToClipboard(newPassword);
-                      setPwCopy(ok ? "copied" : "failed");
-                      later(() => setPwCopy(null), 2000, "pwCopy");
+            {addGoogleAccount ? (
+              <div>
+                <label htmlFor="new-user-google-email" className="sr-only">
+                  {t.settings.people.googleEmail}
+                </label>
+                <input
+                  id="new-user-google-email"
+                  type="email"
+                  value={newGoogleEmail}
+                  onChange={(e) => {
+                    setNewGoogleEmail(e.target.value);
+                    setAddErrors(null);
+                  }}
+                  maxLength={254}
+                  placeholder={t.settings.people.googleEmail}
+                  required
+                  aria-invalid={Boolean(addErrors) || undefined}
+                  aria-describedby={addErrors ? "add-user-error" : undefined}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground"
+                />
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <label htmlFor="new-user-password" className="sr-only">
+                    {t.auth.password}
+                  </label>
+                  <input
+                    id="new-user-password"
+                    type={showGeneratedPw ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => {
+                      setNewPassword(e.target.value);
+                      setShowGeneratedPw(false);
+                      setPwCopy(null);
+                      setAddErrors(null);
                     }}
+                    placeholder={t.auth.password}
+                    required
+                    aria-invalid={Boolean(addErrors) || undefined}
+                    aria-describedby={addErrors ? "add-user-error" : undefined}
                     className={cn(
-                      "shrink-0 p-2 rounded-lg border border-border transition-colors",
-                      pwCopy === "copied"
-                        ? "text-success-ink bg-green-500/10"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      "flex-1 min-w-0 px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground",
+                      showGeneratedPw && "font-mono",
                     )}
-                    title={
-                      pwCopy === "copied"
-                        ? t.settings.people.passwordCopied
-                        : pwCopy === "failed"
-                          ? t.common.copyFailed
-                          : t.settings.people.copyPasswordButton
-                    }
-                  >
-                    {pwCopy === "copied" ? (
-                      <Check className="h-4 w-4" />
-                    ) : pwCopy === "failed" ? (
-                      <X className="h-4 w-4 text-destructive" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </button>
-                  <CopyFeedback status={pwCopy} />
-                </>
-              )}
-            </div>
-            <select
-              value={newRole}
-              onChange={(e) => setNewRole(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground"
-            >
-              {availableRoles.length > 0 ? (
-                availableRoles.map((r) => (
-                  <option key={r.name} value={r.name}>
-                    {r.name.charAt(0).toUpperCase() + r.name.slice(1)}:{" "}
-                    {r.description || t.settings.people.noDescription}
-                  </option>
-                ))
-              ) : (
-                <>
-                  <option value="user">{t.settings.people.roleUserDescription}</option>
-                  <option value="editor">{t.settings.people.roleEditorDescription}</option>
-                  <option value="admin">{t.settings.people.roleAdminDescription}</option>
-                </>
-              )}
-            </select>
-            <select
-              value={newTeam}
-              onChange={(e) => setNewTeam(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground"
-            >
-              {teams.map((tm) => (
-                <option key={tm.id} value={tm.name}>
-                  {tm.name}
-                </option>
-              ))}
-              {teams.length === 0 && (
-                <option value="Default">{t.settings.people.defaultTeamOption}</option>
-              )}
-            </select>
+                  />
+                  {showGeneratedPw && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const ok = await copyToClipboard(newPassword);
+                          setPwCopy(ok ? "copied" : "failed");
+                          later(() => setPwCopy(null), 2000, "pwCopy");
+                        }}
+                        className={cn(
+                          "shrink-0 p-2 rounded-lg border border-border transition-colors",
+                          pwCopy === "copied"
+                            ? "text-success-ink bg-green-500/10"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                        )}
+                        title={
+                          pwCopy === "copied"
+                            ? t.settings.people.passwordCopied
+                            : pwCopy === "failed"
+                              ? t.common.copyFailed
+                              : t.settings.people.copyPasswordButton
+                        }
+                      >
+                        {pwCopy === "copied" ? (
+                          <Check className="h-4 w-4" />
+                        ) : pwCopy === "failed" ? (
+                          <X className="h-4 w-4 text-destructive" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </button>
+                      <CopyFeedback status={pwCopy} />
+                    </>
+                  )}
+                </div>
+                <select
+                  value={newRole}
+                  onChange={(e) => setNewRole(e.target.value)}
+                  className="px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground"
+                >
+                  {availableRoles.length > 0 ? (
+                    availableRoles.map((r) => (
+                      <option key={r.name} value={r.name}>
+                        {r.name.charAt(0).toUpperCase() + r.name.slice(1)}:{" "}
+                        {r.description || t.settings.people.noDescription}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="user">{t.settings.people.roleUserDescription}</option>
+                      <option value="editor">{t.settings.people.roleEditorDescription}</option>
+                      <option value="admin">{t.settings.people.roleAdminDescription}</option>
+                    </>
+                  )}
+                </select>
+                <select
+                  value={newTeam}
+                  onChange={(e) => setNewTeam(e.target.value)}
+                  className="px-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground"
+                >
+                  {teams.map((tm) => (
+                    <option key={tm.id} value={tm.name}>
+                      {tm.name}
+                    </option>
+                  ))}
+                  {teams.length === 0 && (
+                    <option value="Default">{t.settings.people.defaultTeamOption}</option>
+                  )}
+                </select>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -2302,20 +2406,22 @@ export function PeopleSection() {
               {adding && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
               {t.common.create}
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                const pw = generatePassword(passwordLengthFor(policyMinLength));
-                setNewPassword(pw);
-                setShowGeneratedPw(true);
-                setPwCopy(null);
-                setAddErrors(null);
-              }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-primary/30 bg-primary/10 text-xs text-primary-ink hover:bg-primary/20 font-medium transition-colors"
-            >
-              <Sparkles className="h-3 w-3" />
-              {t.changePassword.generateButton}
-            </button>
+            {!addGoogleAccount && (
+              <button
+                type="button"
+                onClick={() => {
+                  const pw = generatePassword(passwordLengthFor(policyMinLength));
+                  setNewPassword(pw);
+                  setShowGeneratedPw(true);
+                  setPwCopy(null);
+                  setAddErrors(null);
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-primary/30 bg-primary/10 text-xs text-primary-ink hover:bg-primary/20 font-medium transition-colors"
+              >
+                <Sparkles className="h-3 w-3" />
+                {t.changePassword.generateButton}
+              </button>
+            )}
             <div className="flex-1" />
             <button
               type="button"
@@ -2326,6 +2432,8 @@ export function PeopleSection() {
                 // Reset the field values too, so re-opening the form is clean.
                 setNewUsername("");
                 setNewPassword("");
+                setNewGoogleAccount(false);
+                setNewGoogleEmail("");
                 setAddErrors(null);
               }}
               className="px-4 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:bg-muted transition-colors"
@@ -2333,7 +2441,7 @@ export function PeopleSection() {
               {t.common.cancel}
             </button>
           </div>
-          {showGeneratedPw && pwCopy !== "copied" && (
+          {!addGoogleAccount && showGeneratedPw && pwCopy !== "copied" && (
             <p className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
               <Key className="h-3.5 w-3.5 shrink-0" />
               {t.settings.people.copyPasswordWarning}
@@ -2518,17 +2626,20 @@ export function PeopleSection() {
                       <span className="text-sm font-medium text-foreground truncate">
                         {u.username}
                       </span>
-                      {u.hasOidcLink && u.hasLocalPassword !== false && (
+                      {!u.googleWakeApproved && u.hasOidcLink && u.hasLocalPassword !== false && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                           {t.auth.methodBoth}
                         </span>
                       )}
-                      {u.hasOidcLink && u.hasLocalPassword === false && (
+                      {!u.googleWakeApproved && u.hasOidcLink && u.hasLocalPassword === false && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                           {t.auth.methodOidc}
                         </span>
                       )}
                     </div>
+                    {u.googleWakeApproved && (
+                      <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+                    )}
                     <div className="flex items-center gap-2 mt-0.5">
                       <span
                         className={cn(
@@ -2538,7 +2649,7 @@ export function PeopleSection() {
                             : "bg-muted text-muted-foreground",
                         )}
                       >
-                        {u.role}
+                        {u.googleWakeApproved && u.isDisabled ? t.common.disabled : u.role}
                       </span>
                       <span className="text-xs text-muted-foreground truncate">{u.team}</span>
                     </div>
@@ -2551,18 +2662,27 @@ export function PeopleSection() {
                     <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary-ink font-semibold text-sm shrink-0">
                       {u.username.charAt(0).toUpperCase()}
                     </div>
-                    <span className="text-sm font-medium text-foreground truncate">
-                      {u.username}
-                    </span>
-                    {u.hasOidcLink && u.hasLocalPassword !== false && (
-                      <span className="ms-1.5 text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                        {t.auth.methodBoth}
-                      </span>
-                    )}
-                    {u.hasOidcLink && u.hasLocalPassword === false && (
-                      <span className="ms-1.5 text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                        {t.auth.methodOidc}
-                      </span>
+                    {u.googleWakeApproved ? (
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">{u.username}</p>
+                        <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="text-sm font-medium text-foreground truncate">
+                          {u.username}
+                        </span>
+                        {u.hasOidcLink && u.hasLocalPassword !== false && (
+                          <span className="ms-1.5 text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                            {t.auth.methodBoth}
+                          </span>
+                        )}
+                        {u.hasOidcLink && u.hasLocalPassword === false && (
+                          <span className="ms-1.5 text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                            {t.auth.methodOidc}
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
 
@@ -2576,7 +2696,7 @@ export function PeopleSection() {
                           : "bg-muted text-muted-foreground",
                       )}
                     >
-                      {u.role}
+                      {u.googleWakeApproved && u.isDisabled ? t.common.disabled : u.role}
                     </span>
                   </div>
 
@@ -2606,19 +2726,34 @@ export function PeopleSection() {
                     role="menu"
                     className="absolute right-0 top-8 z-50 w-44 rounded-lg border border-border bg-background shadow-lg py-1"
                   >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingUser(u);
-                        setEditRole(u.role);
-                        setEditTeam(u.team);
-                        setOpenMenuId(null);
-                      }}
-                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                      {t.settings.people.editRoleTeamAction}
-                    </button>
+                    {u.googleWakeApproved && (
+                      <button
+                        type="button"
+                        disabled={updatingGoogleUser}
+                        onClick={() => handleGoogleAccess(u)}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                      >
+                        <Lock className="h-3.5 w-3.5" />
+                        {u.isDisabled
+                          ? t.settings.people.enableGoogleAccount
+                          : t.settings.people.disableGoogleAccount}
+                      </button>
+                    )}
+                    {!(u.googleWakeApproved && u.isDisabled) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingUser(u);
+                          setEditRole(u.role);
+                          setEditTeam(u.team);
+                          setOpenMenuId(null);
+                        }}
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        {t.settings.people.editRoleTeamAction}
+                      </button>
+                    )}
                     {u.hasLocalPassword !== false && (
                       <button
                         type="button"

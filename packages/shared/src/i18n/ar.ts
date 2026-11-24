@@ -5330,6 +5330,12 @@ export const ar: TranslationKeys = {
       ssoNeedsProvider: "يتطلب فرض SSO إعداد موفّر OIDC أو SAML أولًا.",
     },
     people: {
+      googleAccount: "حساب Google",
+      googleEmail: "عنوان البريد الإلكتروني لحساب Google",
+      googleAccountTaken: "اسم المستخدم أو عنوان Google هذا مستخدم بالفعل.",
+      googleEmailInvalid: "أدخل عنوان بريد إلكتروني صالحًا لحساب Google.",
+      disableGoogleAccount: "تعطيل الوصول عبر Google",
+      enableGoogleAccount: "تمكين الوصول عبر Google",
       heading: "الأعضاء",
       description: "إدارة أعضاء مساحة العمل وصلاحياتهم",
       userCount: "{count} مستخدم",

@@ -68,7 +68,7 @@ try {
         matches.length !== 1 ||
         existing.username !== username ||
         existing.email !== email ||
-        existing.role !== "user" ||
+        !existing.googleWakeApproved ||
         existing.team !== team.id ||
         existing.passwordHash !== null ||
         existing.scimExternalId !== null ||
@@ -90,6 +90,7 @@ try {
       team: team.id,
       authProvider: "local",
       passwordHash: null,
+      googleWakeApproved: true,
       mustChangePassword: false,
     });
     return { id, created: true };

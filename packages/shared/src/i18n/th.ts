@@ -5295,6 +5295,12 @@ export const th: TranslationKeys = {
       ssoNeedsProvider: "ต้องตั้งค่าผู้ให้บริการ OIDC หรือ SAML ก่อนจึงจะบังคับใช้ SSO ได้",
     },
     people: {
+      googleAccount: "บัญชี Google",
+      googleEmail: "ที่อยู่อีเมล Google",
+      googleAccountTaken: "ชื่อผู้ใช้หรือที่อยู่ Google นี้ถูกใช้งานแล้ว",
+      googleEmailInvalid: "ป้อนที่อยู่อีเมล Google ที่ถูกต้อง",
+      disableGoogleAccount: "ปิดการเข้าถึงผ่าน Google",
+      enableGoogleAccount: "เปิดการเข้าถึงผ่าน Google",
       heading: "สมาชิก",
       description: "จัดการสมาชิกพื้นที่ทำงานและสิทธิ์ของพวกเขา",
       userCount: "{count} ผู้ใช้",

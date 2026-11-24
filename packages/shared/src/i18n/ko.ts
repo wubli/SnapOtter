@@ -5292,6 +5292,12 @@ export const ko: TranslationKeys = {
       ssoNeedsProvider: "SSO를 적용하려면 먼저 OIDC 또는 SAML 공급자를 설정해야 합니다.",
     },
     people: {
+      googleAccount: "Google 계정",
+      googleEmail: "Google 이메일 주소",
+      googleAccountTaken: "이 사용자 이름 또는 Google 주소는 이미 사용 중입니다.",
+      googleEmailInvalid: "유효한 Google 이메일 주소를 입력하세요.",
+      disableGoogleAccount: "Google 접근 사용 중지",
+      enableGoogleAccount: "Google 접근 사용 설정",
       heading: "멤버",
       description: "워크스페이스 멤버 및 권한 관리",
       userCount: "사용자 {count}명",

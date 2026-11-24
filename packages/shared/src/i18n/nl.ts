@@ -5394,6 +5394,12 @@ export const nl: TranslationKeys = {
         "Om SSO af te dwingen moet eerst een OIDC- of SAML-provider zijn ingesteld.",
     },
     people: {
+      googleAccount: "Google-account",
+      googleEmail: "Google-e-mailadres",
+      googleAccountTaken: "Deze gebruikersnaam of dit Google-adres is al in gebruik.",
+      googleEmailInvalid: "Voer een geldig Google-e-mailadres in.",
+      disableGoogleAccount: "Google-toegang uitschakelen",
+      enableGoogleAccount: "Google-toegang inschakelen",
       heading: "Personen",
       description: "Werkruimteleden en hun rechten beheren",
       userCount: "{count} gebruiker",

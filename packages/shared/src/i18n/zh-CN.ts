@@ -5021,6 +5021,12 @@ export const zhCN: TranslationKeys = {
       ssoNeedsProvider: "要启用 SSO 强制登录，请先配置 OIDC 或 SAML 提供商。",
     },
     people: {
+      googleAccount: "Google 帐号",
+      googleEmail: "Google 电子邮件地址",
+      googleAccountTaken: "此用户名或 Google 地址已被使用。",
+      googleEmailInvalid: "请输入有效的 Google 电子邮件地址。",
+      disableGoogleAccount: "停用 Google 访问权限",
+      enableGoogleAccount: "启用 Google 访问权限",
       heading: "成员",
       description: "管理工作区成员及其权限",
       userCount: "{count} 个用户",

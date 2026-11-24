@@ -17,6 +17,10 @@ import {
   sanitizeUsername,
   UsernameRaceExhaustedError,
 } from "../lib/external-auth-resolver.js";
+import {
+  isGoogleWakeManagementEnabled,
+  verifiedGoogleWakeEmail,
+} from "../lib/google-wake-users.js";
 import { authAttempts } from "../lib/metrics.js";
 import {
   oidcDiscoveryFault,
@@ -515,8 +519,15 @@ export async function oidcRoutes(app: FastifyInstance): Promise<void> {
       }
 
       const sub = claims.sub;
-      const email = typeof claims.email === "string" ? claims.email : undefined;
-      const emailVerified = claims.email_verified === true;
+      const googleWakeManaged = isGoogleWakeManagementEnabled();
+      const email = googleWakeManaged
+        ? verifiedGoogleWakeEmail(claims)
+        : typeof claims.email === "string"
+          ? claims.email
+          : undefined;
+      const emailVerified = googleWakeManaged
+        ? email !== undefined
+        : claims.email_verified === true;
       const rawUsername = deriveUsername(claims as Record<string, unknown>);
       const derivedUsername = sanitizeUsername(rawUsername);
       const idToken = tokenResponse.id_token ?? null;
@@ -529,6 +540,7 @@ export async function oidcRoutes(app: FastifyInstance): Promise<void> {
           externalId: sub,
           email,
           emailVerified,
+          ...(googleWakeManaged && { googleWakeManaged }),
           username: derivedUsername,
           autoCreate: env.OIDC_AUTO_CREATE_USERS,
           autoLink: env.OIDC_AUTO_LINK_USERS,

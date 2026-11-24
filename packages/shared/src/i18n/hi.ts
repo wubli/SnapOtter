@@ -5111,6 +5111,12 @@ export const hi: TranslationKeys = {
       ssoNeedsProvider: "SSO प्रवर्तन के लिए पहले OIDC या SAML प्रदाता सेट करें।",
     },
     people: {
+      googleAccount: "Google खाता",
+      googleEmail: "Google ईमेल पता",
+      googleAccountTaken: "यह उपयोगकर्ता नाम या Google पता पहले से इस्तेमाल हो रहा है।",
+      googleEmailInvalid: "मान्य Google ईमेल पता दर्ज करें।",
+      disableGoogleAccount: "Google पहुँच बंद करें",
+      enableGoogleAccount: "Google पहुँच चालू करें",
       heading: "सदस्य",
       description: "वर्कस्पेस सदस्यों और उनकी अनुमतियों का प्रबंधन करें",
       userCount: "{count} उपयोगकर्ता",

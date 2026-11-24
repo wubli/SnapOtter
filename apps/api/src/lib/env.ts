@@ -225,6 +225,10 @@ const envSchema = z
     // dev` and a bare `node` deployment cannot end up on a different
     // authentication boundary than a container. See lib/trust-proxy.ts.
     TRUST_PROXY: z.string().default(DEFAULT_TRUST_PROXY),
+    GOOGLE_WAKE_USER_MANAGEMENT: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
     OIDC_ENABLED: z
       .enum(["true", "false"])
       .default("false")

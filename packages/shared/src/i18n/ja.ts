@@ -5323,6 +5323,12 @@ export const ja: TranslationKeys = {
         "SSO を強制するには、先に OIDC または SAML プロバイダーを設定してください。",
     },
     people: {
+      googleAccount: "Google アカウント",
+      googleEmail: "Google メールアドレス",
+      googleAccountTaken: "このユーザー名または Google メールアドレスは既に使われています。",
+      googleEmailInvalid: "有効な Google メールアドレスを入力してください。",
+      disableGoogleAccount: "Google 経由のアクセスを無効にする",
+      enableGoogleAccount: "Google 経由のアクセスを有効にする",
       heading: "メンバー",
       description: "ワークスペースのメンバーと権限を管理",
       userCount: "{count}人のユーザー",

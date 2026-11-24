@@ -5370,6 +5370,12 @@ export const id: TranslationKeys = {
         "Penerapan SSO memerlukan penyedia OIDC atau SAML yang sudah dikonfigurasi.",
     },
     people: {
+      googleAccount: "Akun Google",
+      googleEmail: "Alamat email Google",
+      googleAccountTaken: "Nama pengguna atau alamat Google ini sudah digunakan.",
+      googleEmailInvalid: "Masukkan alamat email Google yang valid.",
+      disableGoogleAccount: "Nonaktifkan akses melalui Google",
+      enableGoogleAccount: "Aktifkan akses melalui Google",
       heading: "Anggota",
       description: "Kelola anggota workspace dan izin mereka",
       userCount: "{count} pengguna",

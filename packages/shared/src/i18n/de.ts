@@ -5408,6 +5408,12 @@ export const de: TranslationKeys = {
         "Für die SSO-Erzwingung muss zuerst ein OIDC- oder SAML-Anbieter eingerichtet sein.",
     },
     people: {
+      googleAccount: "Google-Konto",
+      googleEmail: "Google-E-Mail-Adresse",
+      googleAccountTaken: "Dieser Benutzername oder diese Google-Adresse wird bereits verwendet.",
+      googleEmailInvalid: "Gib eine gültige Google-E-Mail-Adresse ein.",
+      disableGoogleAccount: "Google-Zugriff deaktivieren",
+      enableGoogleAccount: "Google-Zugriff aktivieren",
       heading: "Personen",
       description: "Arbeitsbereich-Mitglieder und deren Berechtigungen verwalten",
       userCount: "{count} Benutzer",

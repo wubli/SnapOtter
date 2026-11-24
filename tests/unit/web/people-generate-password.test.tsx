@@ -183,3 +183,99 @@ describe("Add user: a failed policy read", () => {
     expect(warn).toHaveBeenCalledWith(policyWarning, failure);
   });
 });
+
+describe("Google access in People", () => {
+  const googleUser = {
+    id: "approved-1",
+    username: "approved",
+    email: "approved@example.test",
+    role: "user",
+    team: "Default",
+    googleWakeApproved: true,
+    isDisabled: false,
+    hasLocalPassword: false,
+  };
+
+  function enableGoogleManagement() {
+    const ordinaryGet = apiGet.getMockImplementation();
+    let disabled = false;
+    apiGet.mockImplementation(async (path: string) => {
+      if (path === "/auth/users") {
+        return {
+          users: [{ ...googleUser, isDisabled: disabled }],
+          maxUsers: 5,
+          googleWakeManaged: true,
+        };
+      }
+      return ordinaryGet?.(path);
+    });
+    apiPut.mockImplementation(async (_path, update) => {
+      disabled = update.disabled;
+    });
+  }
+
+  it("creates a Google account with no password or role controls", async () => {
+    enableGoogleManagement();
+    await openAddForm();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: en.settings.people.googleAccount }));
+    expect(screen.queryByPlaceholderText(en.auth.password)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: en.changePassword.generateButton }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(en.settings.people.usernamePlaceholder), {
+      target: { value: "new-member" },
+    });
+    fireEvent.change(screen.getByLabelText(en.settings.people.googleEmail), {
+      target: { value: "new-member@gmail.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: en.common.create }));
+
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith("/auth/register", {
+        username: "new-member",
+        googleEmail: "new-member@gmail.com",
+      }),
+    );
+  });
+
+  it("keeps the Google option hidden when the server does not support it", async () => {
+    await openAddForm();
+    expect(
+      screen.queryByRole("checkbox", { name: en.settings.people.googleAccount }),
+    ).not.toBeInTheDocument();
+    expect(passwordInput()).toBeInTheDocument();
+  });
+
+  it("finds a Google account by email, disables it, and enables it again", async () => {
+    enableGoogleManagement();
+    render(
+      <I18nProvider>
+        <PeopleSection />
+      </I18nProvider>,
+    );
+    expect(await screen.findByText(googleUser.email)).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText(en.settings.people.searchPlaceholder), {
+      target: { value: "EXAMPLE.TEST" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: en.common.actions }));
+    expect(
+      screen.queryByRole("button", { name: en.settings.people.resetPasswordAction }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: en.settings.people.editRoleTeamAction }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: en.settings.people.disableGoogleAccount }));
+
+    await screen.findByText(en.common.disabled);
+    expect(apiPut).toHaveBeenLastCalledWith("/auth/users/approved-1", { disabled: true });
+
+    fireEvent.click(screen.getByRole("button", { name: en.common.actions }));
+    fireEvent.click(screen.getByRole("button", { name: en.settings.people.enableGoogleAccount }));
+    await waitFor(() => {
+      expect(apiPut).toHaveBeenLastCalledWith("/auth/users/approved-1", { disabled: false });
+      expect(screen.queryByText(en.common.disabled)).not.toBeInTheDocument();
+    });
+  });
+});

@@ -5369,6 +5369,12 @@ export const sv: TranslationKeys = {
         "SSO-krav kräver att en OIDC- eller SAML-leverantör har konfigurerats först.",
     },
     people: {
+      googleAccount: "Google-konto",
+      googleEmail: "Google-e-postadress",
+      googleAccountTaken: "Användarnamnet eller Google-adressen används redan.",
+      googleEmailInvalid: "Ange en giltig Google-e-postadress.",
+      disableGoogleAccount: "Inaktivera åtkomst via Google",
+      enableGoogleAccount: "Aktivera åtkomst via Google",
       heading: "Personer",
       description: "Hantera arbetsytans medlemmar och deras behörigheter",
       userCount: "{count} användare",

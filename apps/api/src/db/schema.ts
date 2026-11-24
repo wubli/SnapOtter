@@ -43,6 +43,7 @@ export const users = pgTable(
     // still has to find the user by this one to update or deprovision them.
     scimExternalId: text("scim_external_id"),
     email: text("email"),
+    googleWakeApproved: boolean("google_wake_approved").notNull().default(false),
     legalHold: boolean("legal_hold").notNull().default(false),
     storageUsed: bigint("storage_used", { mode: "number" }).notNull().default(0),
     storageQuota: bigint("storage_quota", { mode: "number" }),

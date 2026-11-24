@@ -5,6 +5,7 @@ import type { FastifyBaseLogger } from "fastify";
 import { db, schema } from "../db/index.js";
 import { isDisabledRole } from "../permissions.js";
 import { auditLog, sanitizeAuditInput } from "./audit.js";
+import { isUniqueViolation } from "./pg-errors.js";
 import { userLimitReached } from "./user-limit.js";
 
 // ── Types ─────────────────────────────────────────────────────────
@@ -14,6 +15,7 @@ export interface ExternalAuthParams {
   externalId: string; // OIDC sub or SAML NameID
   email?: string;
   emailVerified?: boolean;
+  googleWakeManaged?: boolean;
   username: string; // derived/sanitized username
   autoCreate: boolean;
   autoLink: boolean;
@@ -94,9 +96,75 @@ export async function findUniqueUsername(base: string): Promise<string> {
   return `${base}_${Date.now()}`;
 }
 
+async function resolveGoogleWakeUser(params: ExternalAuthParams): Promise<ExternalAuthResult> {
+  const denied: ExternalAuthResult = {
+    user: null,
+    action: "denied",
+    deniedReason: "user_not_authorized",
+  };
+  if (!params.emailVerified || !params.email || !params.externalId) return denied;
+
+  const email = params.email;
+  const result = await db
+    .transaction(async (tx): Promise<ExternalAuthResult> => {
+      const rows = await tx
+        .select()
+        .from(schema.users)
+        .where(and(eq(schema.users.email, email), eq(schema.users.googleWakeApproved, true)))
+        .limit(2)
+        .for("no key update");
+      if (rows.length !== 1) return denied;
+      const [approved] = rows;
+      if (isDisabledRole(approved.role)) return { ...denied, deniedReason: "user_disabled" };
+
+      let action: "linked" | "matched";
+      if (approved.authProvider === "local" && approved.externalId === null) {
+        await tx
+          .update(schema.users)
+          .set({
+            externalId: params.externalId,
+            authProvider: "oidc",
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.users.id, approved.id));
+        action = "linked";
+      } else if (approved.authProvider === "oidc" && approved.externalId === params.externalId) {
+        action = "matched";
+      } else {
+        return denied;
+      }
+
+      const { id, username, role, team } = approved;
+      return { user: { id, username, role, team }, action };
+    })
+    .catch((error: unknown) => {
+      if (isUniqueViolation(error)) return denied;
+      throw error;
+    });
+
+  if (result.action === "linked") {
+    await auditLog(
+      params.logger,
+      "OIDC_USER_LINKED",
+      {
+        userId: result.user?.id,
+        username: result.user?.username,
+        via: "google-wake",
+      },
+      params.ip,
+      params.requestId,
+    );
+  }
+  return result;
+}
+
 // ── Resolver ─────────────────────────────────────────────────────
 
 export async function resolveExternalUser(params: ExternalAuthParams): Promise<ExternalAuthResult> {
+  if (params.googleWakeManaged && params.provider === "oidc") {
+    return resolveGoogleWakeUser(params);
+  }
+
   const {
     provider,
     externalId,

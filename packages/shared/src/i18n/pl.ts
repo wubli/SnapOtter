@@ -5383,6 +5383,12 @@ export const pl: TranslationKeys = {
       ssoNeedsProvider: "Aby wymusić SSO, najpierw skonfiguruj dostawcę OIDC lub SAML.",
     },
     people: {
+      googleAccount: "Konto Google",
+      googleEmail: "Adres e-mail konta Google",
+      googleAccountTaken: "Ta nazwa użytkownika lub ten adres Google są już używane.",
+      googleEmailInvalid: "Wpisz prawidłowy adres e-mail konta Google.",
+      disableGoogleAccount: "Wyłącz dostęp przez Google",
+      enableGoogleAccount: "Włącz dostęp przez Google",
       heading: "Użytkownicy",
       description: "Zarządzanie członkami przestrzeni roboczej i ich uprawnieniami",
       userCount: "{count} użytkownik",
