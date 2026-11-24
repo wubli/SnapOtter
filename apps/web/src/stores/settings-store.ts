@@ -1,6 +1,7 @@
 import { ONBOARDING_FIRST_PROCESSED_KEY } from "@snapotter/shared";
 import { create } from "zustand";
 import { apiGet } from "@/lib/api";
+import { appUrl } from "@/lib/app-url";
 import { parseStringArray } from "@/lib/settings-payload";
 import { useThemeStore } from "./theme-store";
 
@@ -71,6 +72,20 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
         useThemeStore.getState().applyServerDefault(defaultTheme);
       } catch {
+        // Tool access can be granted independently of permission to read settings.
+        // Load the public deployment policy so these users still see availability and
+        // the transcription data-transfer notice.
+        try {
+          const response = await fetch(appUrl("/api/v1/config/ai"));
+          if (response.ok) {
+            const data: { aiProvider?: "openai"; deploymentDisabledTools?: string[] } =
+              await response.json();
+            set({
+              aiProvider: data.aiProvider ?? "local",
+              deploymentDisabledTools: data.deploymentDisabledTools ?? [],
+            });
+          }
+        } catch {}
         set({ loaded: true, loadError: true });
       }
     })();

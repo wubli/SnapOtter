@@ -2598,6 +2598,8 @@ describe("useSettingsStore", () => {
   beforeEach(() => {
     useSettingsStore.setState({
       disabledTools: [],
+      deploymentDisabledTools: [],
+      aiProvider: "local",
       experimentalEnabled: false,
       defaultToolView: "sidebar",
       defaultTheme: "light",
@@ -2635,6 +2637,23 @@ describe("useSettingsStore", () => {
     expect(s.defaultToolView).toBe("fullscreen");
     expect(s.defaultTheme).toBe("dark");
     expect(s.loaded).toBe(true);
+  });
+
+  it("loads public tool availability when the user's role cannot read settings", async () => {
+    mockApiGet.mockRejectedValueOnce(new Error("Forbidden"));
+    const fallback = vi.fn(async () =>
+      Response.json({ aiProvider: "openai", deploymentDisabledTools: ["ocr", "ocr-pdf"] }),
+    );
+    vi.stubGlobal("fetch", fallback);
+    try {
+      await useSettingsStore.getState().fetch();
+
+      expect(fallback).toHaveBeenCalledWith("/api/v1/config/ai");
+      expect(useSettingsStore.getState().aiProvider).toBe("openai");
+      expect(useSettingsStore.getState().deploymentDisabledTools).toEqual(["ocr", "ocr-pdf"]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("fetch applies server default theme when no user preference", async () => {

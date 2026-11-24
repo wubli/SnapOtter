@@ -42,6 +42,7 @@ const envMock = vi.hoisted(() => ({
     SESSION_SECRET: "topsecret",
     SENTRY_DSN: "https://abc@sentry.io/1",
     S3_ACCESS_KEY_ID: "AKIA123",
+    OPENAI_API_KEY: "synthetic-openai-credential",
     PORT: 13490,
     AUTH_ENABLED: true,
   } as Record<string, unknown>,
@@ -178,6 +179,7 @@ describe("buildSupportBundle config.json redaction", () => {
     expect(config.SESSION_SECRET).toBe("<redacted>");
     expect(config.SENTRY_DSN).toBe("<redacted>");
     expect(config.S3_ACCESS_KEY_ID).toBe("<redacted>");
+    expect(config.OPENAI_API_KEY).toBe("<redacted>");
   });
 
   it("passes non-sensitive keys through unchanged and stamps version + node", async () => {

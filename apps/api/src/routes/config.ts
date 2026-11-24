@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { env } from "../config.js";
 import { db, schema } from "../db/index.js";
+import { deploymentDisabledTools } from "../lib/ai-tool-policy.js";
 import { isEnterpriseFeatureEnabled } from "../lib/enterprise-feature.js";
 import { getSettingStrict } from "../lib/settings-helpers.js";
 import { verifyPassword } from "../plugins/auth.js";
@@ -78,7 +79,10 @@ export async function configRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({ defaultLocale: row.value });
   });
 
-  app.get("/api/v1/config/ai", async () => ({ aiProvider: env.AI_PROVIDER }));
+  app.get("/api/v1/config/ai", async () => ({
+    aiProvider: env.AI_PROVIDER,
+    deploymentDisabledTools,
+  }));
 
   // Public config endpoint (for frontend to know if auth is required)
   app.get("/api/v1/config/auth", async (request) => {

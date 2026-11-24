@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { db } from "../../db/index.js";
 import { jobs } from "../../db/schema.js";
+import { isDeploymentToolDisabled } from "../../lib/ai-tool-policy.js";
 
 const DEFAULT_POPULAR = [
   "resize",
@@ -18,6 +19,8 @@ const DEFAULT_POPULAR = [
   "compress-pdf",
 ];
 
+const availableDefaults = DEFAULT_POPULAR.filter((id) => !isDeploymentToolDisabled(id));
+
 export async function registerPopularTools(app: FastifyInstance) {
   app.get("/api/v1/tools/popular", async () => {
     try {
@@ -32,11 +35,15 @@ export async function registerPopularTools(app: FastifyInstance) {
         .limit(12);
 
       if (rows.length < 4) {
-        return { tools: DEFAULT_POPULAR };
+        return { tools: availableDefaults };
       }
-      return { tools: rows.map((r) => r.toolId) };
+      return {
+        tools: rows
+          .map((r) => r.toolId)
+          .filter((id) => id === null || !isDeploymentToolDisabled(id)),
+      };
     } catch {
-      return { tools: DEFAULT_POPULAR };
+      return { tools: availableDefaults };
     }
   });
 }
