@@ -10,7 +10,7 @@ export function resolveDeploymentDisabledTools(
   provider: "local" | "openai",
   hasOpenAiKey: boolean,
 ): string[] {
-  if (provider === "local") return [];
+  if (provider !== "openai") return [];
   return hasOpenAiKey ? [...LOCAL_ONLY_TOOLS] : [...LOCAL_ONLY_TOOLS, ...OPENAI_AUDIO_TOOLS];
 }
 
