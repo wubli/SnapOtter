@@ -1,9 +1,17 @@
+import {
+  clearGoogleWakeStateCookie,
+  createGoogleLogin,
+  googleWakeStateCookieName,
+  isGoogleWakeCallback,
+} from "../google-login.js";
+
 const cookieName = "__Host-snapotter-wake";
 const cookieLifetime = 7 * 24 * 60 * 60;
 const controllerCooldownMs = 10_000;
 const healthSuccessMs = 2_000;
 const healthFailureMs = 1_000;
-const maxUnlockBytes = 2048;
+const nativeLogin = "/api/auth/oidc/login";
+const googleAuthorizationEndpoint = "https://accounts.google.com/o/oauth2/v2/auth";
 const encoder = new TextEncoder();
 const deniedPaths = ["/_internal", "/internal", "/api/internal", "/api/v1/internal"];
 const hopHeaders = [
@@ -24,9 +32,8 @@ function base64url(bytes) {
     .replace(/=+$/, "");
 }
 
-function signatureBytes(value) {
-  if (!/^[A-Za-z0-9_-]{43}$/.test(value)) return null;
-  return Uint8Array.from(atob(`${value.replaceAll("-", "+").replaceAll("_", "/")}=`), (char) =>
+function decodeBytes(value) {
+  return Uint8Array.from(atob(value.replaceAll("-", "+").replaceAll("_", "/")), (char) =>
     char.charCodeAt(0),
   );
 }
@@ -49,39 +56,61 @@ function cookieValue(request) {
     ?.slice(cookieName.length + 1);
 }
 
-async function isRemembered(request, settings, now) {
-  const token = cookieValue(request);
-  if (!token) return false;
-  const match = /^v1\.(\d{1,12})\.([A-Za-z0-9_-]{43})$/.exec(token);
-  if (!match) return false;
-  const expires = Number(match[1]);
-  const current = Math.floor(now / 1000);
-  if (expires <= current || expires > current + cookieLifetime) return false;
-  return crypto.subtle.verify(
-    "HMAC",
-    await signingKey(settings.cookieSecret),
-    signatureBytes(match[2]),
-    encoder.encode(`cookie:${settings.publicOrigin}:${expires}`),
-  );
+function approvedPrincipal(principal, settings) {
+  if (
+    !principal ||
+    typeof principal.sub !== "string" ||
+    !/^[A-Za-z0-9._-]{1,255}$/.test(principal.sub) ||
+    typeof principal.email !== "string" ||
+    !settings.allowedEmails.has(principal.email)
+  )
+    return null;
+  return { sub: principal.sub, email: principal.email };
 }
 
-async function newCookie(settings, now) {
+async function rememberedPrincipal(request, settings, now) {
+  const token = cookieValue(request);
+  if (!token) return null;
+  const match = /^v2\.([A-Za-z0-9_-]{1,1024})\.([A-Za-z0-9_-]{43})$/.exec(token);
+  if (!match) return null;
+  const [, payload, signature] = match;
+  try {
+    const verified = await crypto.subtle.verify(
+      "HMAC",
+      await signingKey(settings.cookieSecret),
+      decodeBytes(signature),
+      encoder.encode(`wake-v2:${settings.publicOrigin}:${payload}`),
+    );
+    if (!verified) return null;
+    const principal = JSON.parse(
+      new TextDecoder("utf-8", { fatal: true }).decode(decodeBytes(payload)),
+    );
+    const current = Math.floor(now / 1000);
+    if (
+      !Number.isSafeInteger(principal?.expires) ||
+      principal.expires <= current ||
+      principal.expires > current + cookieLifetime
+    )
+      return null;
+    return approvedPrincipal(principal, settings);
+  } catch {
+    return null;
+  }
+}
+
+function wakeCookie(value, maxAge) {
+  return `${cookieName}=${value}; Max-Age=${maxAge}; Path=/; Secure; HttpOnly; SameSite=Lax`;
+}
+
+async function newCookie(principal, settings, now) {
   const expires = Math.floor(now / 1000) + cookieLifetime;
+  const payload = base64url(encoder.encode(JSON.stringify({ ...principal, expires })));
   const signature = await crypto.subtle.sign(
     "HMAC",
     await signingKey(settings.cookieSecret),
-    encoder.encode(`cookie:${settings.publicOrigin}:${expires}`),
+    encoder.encode(`wake-v2:${settings.publicOrigin}:${payload}`),
   );
-  return (
-    cookieName +
-    "=v1." +
-    expires +
-    "." +
-    base64url(new Uint8Array(signature)) +
-    "; Max-Age=" +
-    cookieLifetime +
-    "; Path=/; Secure; HttpOnly; SameSite=Lax"
-  );
+  return wakeCookie(`v2.${payload}.${base64url(new Uint8Array(signature))}`, cookieLifetime);
 }
 
 function parseHttpsOrigin(value) {
@@ -104,6 +133,12 @@ function configuration(env) {
   const publicOrigin = parseHttpsOrigin(env.PUBLIC_ORIGIN);
   const origin = parseHttpsOrigin(env.ORIGIN_URL);
   const controller = parseHttpsOrigin(env.WAKE_CONTROLLER_URL);
+  const allowedEmails = new Set(
+    (env.WAKE_GOOGLE_ALLOWED_EMAILS ?? "")
+      .split(",")
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean),
+  );
   if (
     !publicOrigin ||
     !origin ||
@@ -114,7 +149,10 @@ function configuration(env) {
     !env.ORIGIN_TOKEN ||
     !env.WAKE_CONTROLLER_TOKEN ||
     encoder.encode(env.WAKE_COOKIE_SECRET ?? "").length < 32 ||
-    encoder.encode(env.WAKE_PASSPHRASE ?? "").length < 24
+    !env.WAKE_GOOGLE_CLIENT_ID ||
+    !env.WAKE_GOOGLE_CLIENT_SECRET ||
+    allowedEmails.size === 0 ||
+    [...allowedEmails].some((email) => !/^[^\s@,]{1,128}@[^\s@,]{1,190}$/.test(email))
   )
     return null;
   return {
@@ -124,7 +162,9 @@ function configuration(env) {
     originToken: env.ORIGIN_TOKEN,
     controllerToken: env.WAKE_CONTROLLER_TOKEN,
     cookieSecret: env.WAKE_COOKIE_SECRET,
-    passphrase: env.WAKE_PASSPHRASE,
+    clientId: env.WAKE_GOOGLE_CLIENT_ID,
+    clientSecret: env.WAKE_GOOGLE_CLIENT_SECRET,
+    allowedEmails,
   };
 }
 
@@ -174,7 +214,7 @@ function acceptsPage(request) {
   );
 }
 
-function page(content, script = "") {
+function page(content, script = "", status = 200, cookies = []) {
   const nonce = base64url(crypto.getRandomValues(new Uint8Array(18)));
   const html =
     '<!doctype html><html lang="en"><meta charset="utf-8">' +
@@ -188,29 +228,34 @@ function page(content, script = "") {
     "</main>" +
     (script ? `<script nonce="${nonce}">${script}</script>` : "") +
     "</html>";
-  return new Response(html, {
-    headers: noStore({
-      "content-type": "text/html; charset=utf-8",
-      "content-security-policy":
-        "default-src 'none'; style-src 'nonce-" +
-        nonce +
-        "'; script-src 'nonce-" +
-        nonce +
-        "'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
-      // Preserve Origin on same-site form POSTs so the wake endpoint can verify it.
-      "referrer-policy": "same-origin",
-      "x-content-type-options": "nosniff",
-      "x-robots-tag": "noindex, nofollow",
-    }),
+  const headers = noStore({
+    "content-type": "text/html; charset=utf-8",
+    "content-security-policy":
+      "default-src 'none'; style-src 'nonce-" +
+      nonce +
+      "'; script-src 'nonce-" +
+      nonce +
+      "'; connect-src 'self'; form-action 'self' https://accounts.google.com; base-uri 'none'; frame-ancestors 'none'",
+    // Preserve Origin on same-site form POSTs so the wake endpoint can verify it.
+    "referrer-policy": "same-origin",
+    "x-content-type-options": "nosniff",
+    "x-robots-tag": "noindex, nofollow",
   });
+  for (const cookie of cookies) headers.append("set-cookie", cookie);
+  return new Response(html, { status, headers });
 }
 
-function unlockPage() {
+function googleGate({ denied = false, cookies = [] } = {}) {
+  const help = denied
+    ? "<p>This Google account could not be approved. Sign in with an approved account.</p>"
+    : "<p>Sign in with an approved Google account to start the service.</p>";
   return page(
-    "<h1>Open SnapOtter</h1><p>Enter the team passphrase to start the service.</p>" +
-      '<form action="/_wake" method="post"><label for="passphrase">Team passphrase</label>' +
-      '<input id="passphrase" name="passphrase" type="password" autocomplete="current-password" required>' +
-      '<button type="submit">Continue</button></form>',
+    "<h1>Open SnapOtter</h1>" +
+      help +
+      '<form action="/_wake/google" method="post"><button type="submit">Sign in with Google</button></form>',
+    "",
+    denied ? 403 : 200,
+    cookies,
   );
 }
 
@@ -238,7 +283,7 @@ const waitingScript = [
 function waitingPage() {
   return page(
     '<h1>Starting SnapOtter</h1><p id="status" role="status">This page will open when the service is ready.</p>' +
-      '<noscript><form action="/_wake" method="post"><button type="submit">Start SnapOtter</button></form></noscript>',
+      '<p><a href="/login">Use a local SnapOtter account</a></p>',
     waitingScript,
   );
 }
@@ -249,38 +294,6 @@ function sameOrigin(request, settings) {
     (!request.headers.has("sec-fetch-site") ||
       request.headers.get("sec-fetch-site") === "same-origin")
   );
-}
-
-async function unlockForm(request) {
-  const type = request.headers.get("content-type")?.split(";")[0].trim().toLowerCase();
-  if (type !== "application/x-www-form-urlencoded" || !request.body) return null;
-  const length = request.headers.get("content-length");
-  if (length !== null && (!/^\d+$/.test(length) || Number(length) > maxUnlockBytes)) return null;
-  const reader = request.body.getReader();
-  const decoder = new TextDecoder("utf-8", { fatal: true });
-  let size = 0;
-  let body = "";
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > maxUnlockBytes) {
-        await reader.cancel();
-        return null;
-      }
-      body += decoder.decode(value, { stream: true });
-    }
-    const entries = [...new URLSearchParams(body + decoder.decode())];
-    if (entries.length === 0) return {};
-    return entries.length === 1 && entries[0][0] === "passphrase"
-      ? { passphrase: entries[0][1] }
-      : null;
-  } catch {
-    return null;
-  } finally {
-    reader.releaseLock();
-  }
 }
 
 async function hasEmptyBody(request) {
@@ -306,17 +319,6 @@ async function hasEmptyBody(request) {
   }
 }
 
-async function validPassphrase(input, settings) {
-  if (input === undefined) return false;
-  const key = await signingKey(settings.cookieSecret);
-  const correct = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    encoder.encode(`pass:${settings.passphrase}`),
-  );
-  return crypto.subtle.verify("HMAC", key, correct, encoder.encode(`pass:${input}`));
-}
-
 function proxyHeaders(request, settings) {
   const headers = new Headers(request.headers);
   for (const token of (headers.get("connection") ?? "").split(",")) {
@@ -337,7 +339,10 @@ function proxyHeaders(request, settings) {
   const otherCookies = (headers.get("cookie") ?? "")
     .split(";")
     .map((item) => item.trim())
-    .filter((item) => item && item.split("=")[0].trim() !== cookieName);
+    .filter(
+      (item) =>
+        item && ![cookieName, googleWakeStateCookieName].includes(item.split("=")[0].trim()),
+    );
   if (otherCookies.length) headers.set("cookie", otherCookies.join("; "));
   else headers.delete("cookie");
   headers.set("x-snapotter-origin-token", settings.originToken);
@@ -348,7 +353,7 @@ function proxyHeaders(request, settings) {
 
 const bypassCache = { cacheEverything: false, cacheTtlByStatus: { "100-599": -1 } };
 
-function createWorker(fetchUpstream = fetch, now = Date.now) {
+function createWorker(fetchUpstream = fetch, now = Date.now, googleLogin = createGoogleLogin) {
   let health;
   let wake;
 
@@ -407,21 +412,6 @@ function createWorker(fetchUpstream = fetch, now = Date.now) {
   async function handleWake(request, settings, remembered) {
     if (request.method !== "POST") return json(405, "method-not-allowed", { allow: "POST" });
     if (!sameOrigin(request, settings)) return json(403, "forbidden");
-    const type = request.headers.get("content-type")?.split(";")[0].trim().toLowerCase();
-    if (type === "application/x-www-form-urlencoded") {
-      const form = request.body ? await unlockForm(request) : {};
-      if (
-        !form ||
-        ((!remembered || form.passphrase !== undefined) &&
-          !(await validPassphrase(form.passphrase, settings)))
-      ) {
-        return json(401, "unauthorized");
-      }
-      if (!(await ready(settings))) await requestWake(settings);
-      const headers = noStore({ location: "/" });
-      if (!remembered) headers.set("set-cookie", await newCookie(settings, now()));
-      return new Response(null, { status: 303, headers });
-    }
     if (!remembered) return json(401, "unauthorized");
     if (!(await hasEmptyBody(request))) return json(400, "invalid-request");
     if (await ready(settings)) return json(200, "ready");
@@ -438,7 +428,39 @@ function createWorker(fetchUpstream = fetch, now = Date.now) {
       const path = classifyPath(url.pathname);
       if (!path) return json(404, "not-found");
 
-      const remembered = await isRemembered(request, settings, now());
+      const remembered = await rememberedPrincipal(request, settings, now());
+      if (isGoogleWakeCallback(request)) {
+        let principal;
+        try {
+          principal = approvedPrincipal(
+            await googleLogin(settings, { fetchImpl: fetchUpstream, now }).callback(request),
+            settings,
+          );
+        } catch {}
+        const clearState = clearGoogleWakeStateCookie();
+        if (!principal) return googleGate({ denied: true, cookies: [clearState] });
+        const headers = noStore({ location: nativeLogin });
+        headers.append("set-cookie", clearState);
+        headers.append("set-cookie", await newCookie(principal, settings, now()));
+        if (!(await ready(settings))) await requestWake(settings);
+        return new Response(null, { status: 303, headers });
+      }
+      if (path === "/_wake/google") {
+        if (request.method !== "POST") return json(405, "method-not-allowed", { allow: "POST" });
+        if (!sameOrigin(request, settings)) return json(403, "forbidden");
+        if (!(await hasEmptyBody(request))) return json(400, "invalid-request");
+        try {
+          const response = await googleLogin(settings, { fetchImpl: fetchUpstream, now }).start(
+            request,
+          );
+          return new Response(response.body, {
+            status: response.status,
+            headers: noStore(response.headers),
+          });
+        } catch {
+          return googleGate({ denied: true });
+        }
+      }
       if (path === "/_wake") return handleWake(request, settings, remembered);
       if (path === "/_wake/status") {
         if (request.method !== "GET") return json(405, "method-not-allowed", { allow: "GET" });
@@ -450,7 +472,11 @@ function createWorker(fetchUpstream = fetch, now = Date.now) {
       if (path.startsWith("/_wake/")) return json(404, "not-found");
 
       const navigation = acceptsPage(request);
-      if (!remembered) return navigation ? unlockPage() : json(401, "unauthorized");
+      if (!remembered) {
+        return navigation
+          ? googleGate({ cookies: cookieValue(request) ? [wakeCookie("", 0)] : [] })
+          : json(401, "unauthorized");
+      }
       const canWrite = request.method !== "GET" && request.method !== "HEAD";
       if (!(await ready(settings, canWrite))) {
         return navigation ? waitingPage() : json(503, "waiting", { "retry-after": "3" });
@@ -480,11 +506,21 @@ function createWorker(fetchUpstream = fetch, now = Date.now) {
       }
       const headers = noStore(response.headers);
       headers.delete("x-snapotter-origin-token");
+      if (path === "/api/auth/logout" && request.method === "POST" && response.ok) {
+        headers.append("set-cookie", wakeCookie("", 0));
+      }
       const location = headers.get("location");
       if (location) {
         try {
           const redirect = new URL(location, settings.origin);
-          if (redirect.origin === settings.origin) {
+          if (
+            url.pathname === nativeLogin &&
+            request.method === "GET" &&
+            redirect.origin + redirect.pathname === googleAuthorizationEndpoint
+          ) {
+            redirect.searchParams.set("login_hint", remembered.email);
+            headers.set("location", redirect.href);
+          } else if (redirect.origin === settings.origin) {
             headers.set(
               "location",
               settings.publicOrigin + redirect.pathname + redirect.search + redirect.hash,

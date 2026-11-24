@@ -32,6 +32,7 @@ const PLAYWRIGHT_ROOTS = [/^tests\/e2e[^/]*\//, /^tests\/qa\//];
 const NODE_TEST_FILES = [
   "deploy/convert/wake/controller/server.test.mjs",
   "deploy/convert/wake/pages/worker.test.mjs",
+  "deploy/convert/wake/pages/google-login.test.mjs",
 ];
 
 /** What vitest's default filename pattern matches. */

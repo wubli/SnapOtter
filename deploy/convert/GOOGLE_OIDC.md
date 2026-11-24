@@ -85,13 +85,28 @@ It looks up linked users by Google subject (`sub`) on later sign-ins.
 
 ## Verify the callback
 
-Open `https://convert.henesys.shop`, unlock the wake page if present, then click
-**Sign in with Google**. Test with an approved account and check that it reaches
-the intended SnapOtter account. In a separate browser session, an unapproved
-Google account should be denied after the callback. Check the local admin
-password sign-in separately.
+At `https://convert.henesys.shop`, use **Sign in with Google** at the wake gate.
+After SnapOtter is ready, complete native Google sign-in with the same account.
+Check that it reaches the intended SnapOtter account. In a separate browser
+session, an account outside the edge allowlist should be denied before it can
+wake the host. Keep the edge allowlist synchronized with the app's approved users.
 
-The public host serves the OAuth redirect and callback even with the wake
-gateway in front. Both the wake cookie and the signed OIDC state cookie use
-`SameSite=Lax` so the browser includes them on Google’s top-level GET callback.
-The edge forwards the signed app cookie and the callback query to SnapOtter.
+Check the local admin password separately in an authorized browser by opening
+`/login` directly. If you cannot pass the edge gate during recovery, start the
+VM in Compute Engine and SSH to the host. From `/opt/snapotter`, inspect
+account recovery status through the container CLI.
+
+```bash
+sudo docker compose exec snapotter sh -ec '
+  export OIDC_CLIENT_SECRET="$(cat "$OIDC_CLIENT_SECRET_FILE")"
+  exec snapotter-admin "$@"
+' sh status
+```
+
+Pass a recovery subcommand in place of `status` when needed. The public edge
+continues to require Google. [SnapOtter account recovery commands](https://docs.snapotter.com/guide/account-recovery)
+
+The edge and SnapOtter use the same exact public OAuth callback. The worker
+recognizes the state for its own flow and forwards SnapOtter's callback query
+and signed state cookie to the app. The wake and OAuth state cookies use
+`SameSite=Lax` for Google's top-level GET callbacks. [Pages bindings and deployment](wake/pages/README.md)

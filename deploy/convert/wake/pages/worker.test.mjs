@@ -9,7 +9,9 @@ const env = {
   WAKE_CONTROLLER_TOKEN: "controller-fixture-token",
   ORIGIN_TOKEN: "origin-fixture-token",
   WAKE_COOKIE_SECRET: "fixture-signer-secret-thirty-two-bytes",
-  WAKE_PASSPHRASE: "fixture-passphrase-twenty-four-bytes",
+  WAKE_GOOGLE_CLIENT_ID: "fixture-client.apps.googleusercontent.com",
+  WAKE_GOOGLE_CLIENT_SECRET: "fixture-google-client-secret",
+  WAKE_GOOGLE_ALLOWED_EMAILS: "approved@gmail.com, team@workspace.example",
 };
 
 function scenario() {
@@ -17,6 +19,8 @@ function scenario() {
   let availableAt = 1_800_000_000_000;
   let state = "starting";
   const calls = [];
+  const googleCalls = [];
+  const callbackPath = "/api/auth/oidc/callback";
   const worker = createWorker(
     async (url, init) => {
       calls.push({ body: init.body, headers: new Headers(init.headers), method: init.method, url });
@@ -25,6 +29,21 @@ function scenario() {
         return Response.json(
           { status: healthy ? "healthy" : "unavailable" },
           { status: healthy ? 200 : 503 },
+        );
+      }
+      if (url === `${env.ORIGIN_URL}/api/auth/oidc/login`) {
+        return new Response(null, {
+          status: 302,
+          headers: {
+            location: "https://accounts.google.com/o/oauth2/v2/auth?state=app-state",
+            "set-cookie": "oidc-state=app-state",
+          },
+        });
+      }
+      if (url === `${env.ORIGIN_URL}/api/auth/logout`) {
+        return Response.json(
+          { ok: true },
+          { headers: { "set-cookie": "app-session=; Max-Age=0" } },
         );
       }
       if (url.endsWith("/redirect")) {
@@ -50,24 +69,39 @@ function scenario() {
       );
     },
     () => availableAt,
+    () => ({
+      async start() {
+        googleCalls.push("start");
+        return new Response(null, {
+          status: 303,
+          headers: { location: "https://accounts.google.com/o/oauth2/v2/auth?state=gw.fixture" },
+        });
+      },
+      async callback(request) {
+        googleCalls.push("callback");
+        const code = new URL(request.url).searchParams.get("code");
+        if (code === "invalid") throw new Error("verification failed");
+        return {
+          sub: "123456",
+          email: code === "approved" ? "approved@gmail.com" : "other@gmail.com",
+        };
+      },
+    }),
   );
 
-  function request(path, init) {
-    return worker.fetch(new Request(env.PUBLIC_ORIGIN + path, init), env);
+  function request(path, init, overrides) {
+    return worker.fetch(new Request(env.PUBLIC_ORIGIN + path, init), { ...env, ...overrides });
   }
 
-  function unlock(passphrase = env.WAKE_PASSPHRASE, origin = env.PUBLIC_ORIGIN) {
-    return request("/_wake", {
-      method: "POST",
-      headers: { origin },
-      body: new URLSearchParams({ passphrase }),
-    });
+  function callback(code = "approved") {
+    return request(`${callbackPath}?state=gw.fixture&code=${code}`);
   }
 
   return {
     calls,
+    googleCalls,
     request,
-    unlock,
+    callback,
     advance(ms) {
       availableAt += ms;
     },
@@ -84,43 +118,131 @@ const navigation = { accept: "text/html", "sec-fetch-mode": "navigate" };
 const fromBrowser = { origin: env.PUBLIC_ORIGIN, "sec-fetch-site": "same-origin" };
 
 async function cookieFor(fixture) {
-  const response = await fixture.unlock();
+  const response = await fixture.callback();
   assert.equal(response.status, 303);
-  const cookie = response.headers.get("set-cookie");
-  assert.match(cookie, /^__Host-snapotter-wake=v1\.\d+\.[a-zA-Z0-9_-]{43};/);
+  assert.equal(response.headers.get("location"), "/api/auth/oidc/login");
+  const cookie = response.headers
+    .getSetCookie()
+    .find((value) => value.startsWith("__Host-snapotter-wake="));
+  assert.match(cookie, /^__Host-snapotter-wake=v2\.([a-zA-Z0-9_-]+)\.[a-zA-Z0-9_-]{43};/);
   assert.match(cookie, /Path=\/; Secure; HttpOnly; SameSite=Lax/);
   return cookie.split(";")[0];
 }
 
-test("only an authorized browser action can contact the controller", async () => {
+test("only approved Google callbacks or remembered same-origin wake can contact the controller", async () => {
   const f = scenario();
   const gate = await f.request("/", { headers: navigation });
   assert.equal(gate.headers.get("referrer-policy"), "same-origin");
-  assert.match(await gate.text(), /Team passphrase/);
+  assert.match(await gate.text(), /Sign in with Google/);
   assert.equal((await f.request("/api/v1/health")).status, 401);
   assert.equal((await f.request("/_wake/status")).status, 401);
-  assert.equal((await f.unlock("incorrect")).status, 401);
-  assert.equal((await f.unlock(env.WAKE_PASSPHRASE, "https://another.example.test")).status, 403);
-  assert.equal((await f.unlock("x".repeat(2600))).status, 401);
+  assert.equal(
+    (
+      await f.request("/_wake", {
+        method: "POST",
+        headers: fromBrowser,
+        body: new URLSearchParams({ passphrase: "legacy" }),
+      })
+    ).status,
+    401,
+  );
+  assert.equal(
+    (
+      await f.request("/_wake/google", {
+        method: "POST",
+        headers: { origin: "https://elsewhere.example" },
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (await f.request("/_wake/google", { method: "POST", headers: fromBrowser })).status,
+    303,
+  );
+  assert.equal((await f.callback("denied")).status, 403);
+  assert.equal((await f.callback("invalid")).status, 403);
   assert.deepEqual(f.calls, []);
+  assert.deepEqual(f.googleCalls, ["start", "callback", "callback"]);
 
-  await cookieFor(f);
+  const cookie = await cookieFor(f);
   const wakes = f.calls.filter(({ url }) => url.endsWith("/wake"));
   assert.equal(wakes.length, 1);
   assert.equal(wakes[0].method, "POST");
   assert.equal(wakes[0].headers.get("authorization"), `Bearer ${env.WAKE_CONTROLLER_TOKEN}`);
   assert.equal(wakes[0].headers.get("cookie"), null);
+  assert.equal(
+    (
+      await f.request("/_wake", {
+        method: "POST",
+        headers: { cookie, origin: "https://elsewhere.example" },
+      })
+    ).status,
+    403,
+  );
 });
 
-test("signed cookie expires and tampering cannot reach origin", async () => {
+test("legacy cookies are cleared and v2 cookies honor expiry, signature and current approval", async () => {
   const f = scenario();
   f.healthy(true);
+  const legacy = `__Host-snapotter-wake=v1.1800000010.${"x".repeat(43)}`;
+  const gate = await f.request("/", { headers: { ...navigation, cookie: legacy } });
+  assert.match(await gate.text(), /Sign in with Google/);
+  assert.match(gate.headers.get("set-cookie"), /__Host-snapotter-wake=; Max-Age=0/);
+  assert.equal(
+    (await f.request("/_wake", { method: "POST", headers: { ...fromBrowser, cookie: legacy } }))
+      .status,
+    401,
+  );
   const cookie = await cookieFor(f);
-  const tampered = cookie.replace(/v1\.\d+\./, "v1.1800000123.");
+  const tampered = cookie.replace(/v2\.[A-Za-z0-9_-]+\./, "v2.e30.");
   assert.equal((await f.request("/", { headers: { cookie: tampered } })).status, 401);
+  assert.equal(
+    (
+      await f.request(
+        "/_wake",
+        { method: "POST", headers: { ...fromBrowser, cookie } },
+        {
+          WAKE_GOOGLE_ALLOWED_EMAILS: "someone-else@gmail.com",
+        },
+      )
+    ).status,
+    401,
+  );
   f.advance(7 * 24 * 60 * 60_000);
   assert.equal((await f.request("/", { headers: { cookie } })).status, 401);
   assert.equal(f.calls.length, 1);
+});
+
+test("native OIDC uses the preferred Google identity, preserves callbacks and clears the edge session on logout", async () => {
+  const f = scenario();
+  f.healthy(true);
+  const cookie = await cookieFor(f);
+
+  const appLogin = await f.request("/api/auth/oidc/login", { headers: { cookie } });
+  const authorization = new URL(appLogin.headers.get("location"));
+  assert.equal(authorization.searchParams.get("state"), "app-state");
+  assert.equal(authorization.searchParams.get("login_hint"), "approved@gmail.com");
+  assert.equal(appLogin.headers.get("set-cookie"), "oidc-state=app-state");
+
+  const callback = "/api/auth/oidc/callback?state=app-state&code=example";
+  const appCallback = await f.request(callback, {
+    headers: {
+      cookie: `${cookie}; oidc-state=app-state; __Host-snapotter-google-state=edge-state`,
+    },
+  });
+  assert.equal(await appCallback.text(), "file");
+  assert.equal(
+    f.calls.find(({ url }) => url.endsWith(callback)).headers.get("cookie"),
+    "oidc-state=app-state",
+  );
+
+  const login = await f.request("/login", { headers: { ...navigation, cookie } });
+  assert.equal(await login.text(), "file");
+  const logout = await f.request("/api/auth/logout", { method: "POST", headers: { cookie } });
+  assert.deepEqual(logout.headers.getSetCookie(), [
+    "app-session=; Max-Age=0",
+    "__Host-snapotter-wake=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Lax",
+  ]);
 });
 
 test("recognized cold navigation starts automatically and status/upload do not wake", async () => {

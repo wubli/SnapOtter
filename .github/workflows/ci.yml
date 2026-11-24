@@ -199,7 +199,7 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Test the standalone wake services
         if: matrix.shard == 1
-        run: node --test deploy/convert/wake/controller/server.test.mjs deploy/convert/wake/pages/worker.test.mjs
+        run: node --test deploy/convert/wake/controller/server.test.mjs deploy/convert/wake/pages/worker.test.mjs deploy/convert/wake/pages/google-login.test.mjs
       - name: Pre-pull testcontainer images (retry transient Docker Hub errors)
         run: |
           for img in postgres:17-alpine redis:8-alpine; do

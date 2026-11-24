@@ -4,8 +4,10 @@
 import argparse
 import getpass
 import json
+import os
 import re
 import shutil
+import stat
 import struct
 import subprocess
 import sys
@@ -17,7 +19,7 @@ import zlib
 from http.cookiejar import CookieJar
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urlencode, urljoin, urlsplit
+from urllib.parse import quote, urljoin, urlsplit
 from urllib.request import HTTPCookieProcessor, HTTPRedirectHandler, Request, build_opener
 
 
@@ -40,6 +42,7 @@ class Site:
         self.http = build_opener(HTTPCookieProcessor(CookieJar()), NoRedirect())
         self.http.addheaders = [("User-Agent", "SnapOtter-Verify/1.0")]
         self.token = None
+        self.wake_cookie = None
 
     def request(self, path, data=None, content_type=None, *, method=None, headers=None,
                 accept=(), timeout=30):
@@ -48,6 +51,8 @@ class Site:
         if (location.scheme, location.netloc) != (self.origin.scheme, self.origin.netloc):
             raise ValueError("The server returned a URL outside the site origin.")
         headers = dict(headers or {})
+        if self.wake_cookie:
+            headers["Cookie"] = "__Host-snapotter-wake=" + self.wake_cookie
         if self.token:
             headers["Authorization"] = "Bearer " + self.token
         if content_type:
@@ -75,36 +80,35 @@ class Site:
             _, _, body = self.request(path, json.dumps(payload).encode(), "application/json")
         return json.loads(body)
 
-    def wake(self, passphrase, timeout):
-        if not passphrase:
-            raise ValueError("The wake passphrase file is empty.")
+    def wake(self, cookie_file, timeout):
+        if self.origin.scheme != "https":
+            raise ValueError("Use HTTPS when supplying a wake cookie.")
+        self.wake_cookie = read_wake_cookie(cookie_file)
         headers = {"Origin": self.url, "Sec-Fetch-Site": "same-origin"}
         deadline = time.monotonic() + timeout
-        status, _, _ = self.request(
-            "/_wake", urlencode({"passphrase": passphrase}).encode(),
-            "application/x-www-form-urlencoded", headers=headers, accept=(303,),
-            timeout=min(30, timeout),
-        )
-        if status != 303:
-            raise RuntimeError(f"Wake authorization returned unexpected HTTP {status}.")
-        print("Wake passphrase accepted. Waiting for SnapOtter.", flush=True)
+        wake_again = 0
+        rejected = "Wake cookie rejected. Sign in with Google in your browser and copy a fresh cookie."
+        print("Waiting for SnapOtter.", flush=True)
 
-        wake_again = time.monotonic() + 10
         while (remaining := deadline - time.monotonic()) > 0:
             status, response_headers, body = self.request(
-                "/_wake/status", accept=(503,), timeout=min(30, remaining),
+                "/_wake/status", accept=(401, 503), timeout=min(30, remaining),
             )
+            if status == 401:
+                raise RuntimeError(rejected)
             if status == 200 and json.loads(body).get("state") == "ready":
                 print("Wake gateway reports SnapOtter ready.", flush=True)
                 return
             delay = retry_delay(response_headers, default=3)
             remaining = deadline - time.monotonic()
             if time.monotonic() >= wake_again and remaining > 0:
-                _, wake_headers, _ = self.request(
+                status, wake_headers, _ = self.request(
                     "/_wake", method="POST", headers=headers,
-                    accept=(503,), timeout=min(30, remaining),
+                    accept=(401, 503), timeout=min(30, remaining),
                 )
-                wake_again = time.monotonic() + retry_delay(wake_headers, default=10)
+                if status == 401:
+                    raise RuntimeError(rejected)
+                wake_again = time.monotonic() + retry_delay(wake_headers, default=12)
             time.sleep(max(0, min(delay, deadline - time.monotonic())))
         raise RuntimeError("Timed out waiting for SnapOtter to wake.")
 
@@ -144,6 +148,20 @@ class Site:
                 raise RuntimeError(f"Job {job_id} {status}. {detail}".rstrip())
             time.sleep(2)
         raise RuntimeError(f"Timed out waiting for job {job_id}.")
+
+def read_wake_cookie(path):
+    descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
+    with os.fdopen(descriptor, "rb") as file:
+        mode = os.fstat(file.fileno()).st_mode
+        if not stat.S_ISREG(mode) or (mode & (stat.S_IRWXG | stat.S_IRWXO)):
+            raise ValueError("Store the wake cookie in a private regular file (mode 0600).")
+        raw = file.read(1074)
+    if len(raw) > 1073 or not re.fullmatch(
+        rb"v2\.[A-Za-z0-9_-]{1,1024}\.[A-Za-z0-9_-]{43}\r?\n?", raw,
+    ):
+        raise ValueError("The file must contain only the signed v2 wake cookie value.")
+    return raw.rstrip(b"\r\n").decode("ascii")
+
 
 def retry_delay(headers, default):
     retry = headers.get("Retry-After", "")
@@ -368,7 +386,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default="https://convert.henesys.shop", help="Site origin")
     parser.add_argument("--username", default="admin")
-    parser.add_argument("--wake-passphrase-file", type=Path, help="Unlock the wake gateway using a passphrase file")
+    parser.add_argument("--wake-cookie-file", type=Path, help="Read a signed wake cookie from a private file")
     parser.add_argument("--wake-timeout", type=int, default=180, help="Seconds to wait for SnapOtter to wake")
     parser.add_argument("--password-file", type=Path, help="Read the login password from this file")
     parser.add_argument("--change-password", action="store_true", help="Prompt to rotate the bootstrap password if required")
@@ -386,8 +404,8 @@ def main():
         parser.error("--wake-timeout must be positive")
 
     site = Site(args.url)
-    if args.wake_passphrase_file:
-        site.wake(args.wake_passphrase_file.read_text().rstrip("\r\n"), args.wake_timeout)
+    if args.wake_cookie_file:
+        site.wake(args.wake_cookie_file, args.wake_timeout)
     if site.json("/api/v1/health").get("status") != "healthy":
         raise RuntimeError("SnapOtter health endpoint did not report healthy.")
 

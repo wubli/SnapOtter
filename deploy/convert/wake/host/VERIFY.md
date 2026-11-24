@@ -1,12 +1,20 @@
 # Verify wake and idle admission
 
-From a workstation, unlock the edge gateway, wait for SnapOtter to start, and
-run the local conversion and OCR checks. Supply the team passphrase via a
-private file. The verifier prompts for the SnapOtter account password.
+In a browser, use an approved Google account at the wake gate and in SnapOtter.
+Confirm an unapproved Google account is denied in a separate browser session.
+
+For the conversion and OCR smoke tests, copy only the value of
+`__Host-snapotter-wake` from the authorized browser's storage inspector into a
+private file. The cookie grants edge access until it expires. Use a temporary
+file with mode `0600` and remove it after testing. The verifier separately
+prompts for the SnapOtter account password, typically the recovery admin's.
 
 ```sh
-deploy/convert/verify.py --wake-passphrase-file /path/to/wake-passphrase --skip-ai
+deploy/convert/verify.py --wake-cookie-file /private/path/wake-cookie --skip-ai
 ```
+
+For an ungated standalone installation, omit `--wake-cookie-file` and
+specify its origin with `--url`.
 
 To verify the idle guard, copy `verify-busy.mjs` to the VM. From
 `/opt/snapotter`, run the script inside the SnapOtter container. Substitute
